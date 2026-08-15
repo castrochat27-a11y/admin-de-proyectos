@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Patrocinios y Donaciones</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===================== PANTALLA DE INGRESO ===================== -->
+<div id="pantalla-login" class="login-fondo">
+  <form class="login-caja" id="form-login">
+    <h1>Control de Patrocinios<br>y Donaciones</h1>
+    <p class="login-nota">Ingrese con el usuario del equipo.</p>
+
+    <div class="campo">
+      <label for="login-correo">Correo</label>
+      <input type="email" id="login-correo" autocomplete="username" required placeholder="correo@ejemplo.com">
+    </div>
+
+    <div class="campo">
+      <label for="login-clave">Contraseña</label>
+      <input type="password" id="login-clave" autocomplete="current-password" required placeholder="••••••••">
+    </div>
+
+    <button type="submit" class="btn-principal" id="btn-entrar">Entrar</button>
+    <p class="login-error oculto" id="login-error"></p>
+  </form>
+</div>
+
+<!-- ===================== APLICACIÓN ===================== -->
+<div id="aplicacion" class="oculto">
+
+<header class="cabecera">
+  <div class="cabecera-interna">
+    <h1>Control de Patrocinios y Donaciones</h1>
+    <div class="cabecera-acciones">
+      <button class="btn-excel" id="btn-excel">Descargar Excel</button>
+      <button class="btn-salir" id="btn-salir">Salir</button>
+    </div>
+  </div>
+</header>
+
+<main class="contenedor">
+
+  <div id="aviso-conexion" class="aviso-bd oculto"></div>
+
+  <section class="tarjetas-resumen">
+    <div class="tarjeta"><span class="numero" id="r-total">0</span><span class="etiqueta">Registros en total</span></div>
+    <div class="tarjeta"><span class="numero" id="r-proceso">0</span><span class="etiqueta">Gestiones en proceso</span></div>
+    <div class="tarjeta"><span class="numero" id="r-recibidas">0</span><span class="etiqueta">Donaciones realizadas</span></div>
+    <div class="tarjeta destacada"><span class="numero" id="r-monto">₡0</span><span class="etiqueta">Valor total recibido</span></div>
+  </section>
+
+  <section class="caja caja-formulario">
+    <h2 id="titulo-form">Agregar registro</h2>
+    <p class="nota-form">
+      Complete los datos una sola vez. Según el <strong>estado</strong> que elija, el registro
+      aparecerá automáticamente en la pantalla que corresponde.
+    </p>
+
+    <form id="formulario">
+      <input type="hidden" name="id">
+
+      <div class="campo ancho-2">
+        <label>Empresa <span class="req">*</span></label>
+        <input type="text" name="empresa" required placeholder="Nombre de la empresa o negocio">
+      </div>
+
+      <div class="campo ancho-2">
+        <label>Contacto</label>
+        <input type="text" name="contacto" placeholder="Teléfono, correo, WhatsApp o Instagram">
+      </div>
+
+      <div class="campo ancho-2">
+        <label>Responsable</label>
+        <input type="text" name="responsable" placeholder="Nombre de quien da seguimiento">
+      </div>
+
+      <div class="campo ancho-2">
+        <label>Estado <span class="req">*</span></label>
+        <select name="estado" id="select-estado" required></select>
+        <small class="ayuda" id="ayuda-estado"></small>
+      </div>
+
+      <div class="campo ancho-2">
+        <label>Tipo de aporte</label>
+        <input type="text" name="tipo_aporte" placeholder="Ej. Comida, DJ, cupones, materiales, dinero">
+      </div>
+
+      <div class="campo">
+        <label>Valor aproximado (₡)</label>
+        <input type="number" name="valor_aproximado" min="0" step="any" placeholder="Ej. 50000">
+      </div>
+
+      <div class="campo" id="campo-asignacion">
+        <label>Asignación</label>
+        <select name="asignacion" id="select-asignacion">
+          <option value="">— Seleccione —</option>
+          <option value="Pendiente">Pendiente</option>
+          <option value="Asignado">Asignado</option>
+        </select>
+        <small class="ayuda" id="ayuda-asignacion"></small>
+      </div>
+
+      <div class="campo ancho-2">
+        <label>Descripción del aporte</label>
+        <textarea name="descripcion" rows="2" placeholder="Ej. 10 entradas, impresión de 400 volantes, ₡50.000"></textarea>
+      </div>
+
+      <div class="campo ancho-2">
+        <label>Observaciones</label>
+        <textarea name="observaciones" rows="2" placeholder="Notas del seguimiento, fechas, acuerdos"></textarea>
+      </div>
+
+      <div class="campo acciones ancho-4">
+        <button type="submit" class="btn-principal" id="btn-guardar">Guardar registro</button>
+        <button type="button" class="btn-secundario oculto" id="btn-cancelar">Cancelar edición</button>
+      </div>
+    </form>
+  </section>
+
+  <nav class="pestanas" id="pestanas"></nav>
+
+  <section class="caja caja-tabla">
+    <p class="desc-pantalla" id="desc-pantalla">Todos los registros ingresados.</p>
+
+    <div class="filtros">
+      <input type="text" id="f-buscar" placeholder="Buscar por empresa...">
+      <input type="text" id="f-responsable" placeholder="Filtrar por responsable...">
+    </div>
+
+    <div class="tabla-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Empresa</th><th>Contacto</th><th>Responsable</th><th>Estado</th>
+            <th>Tipo de aporte</th><th>Descripción</th><th>Valor aprox.</th><th>Asignación</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="cuerpo-tabla"></tbody>
+      </table>
+    </div>
+    <p class="vacio oculto" id="vacio">No hay registros en esta pantalla.</p>
+  </section>
+
+</main>
+</div>
+
+<div id="aviso" class="aviso oculto"></div>
+
+<div id="modal-fondo" class="modal-fondo oculto">
+  <div class="modal">
+    <h3>Confirmar eliminación</h3>
+    <p id="modal-texto">¿Seguro que desea eliminar este registro?</p>
+    <div class="modal-acciones">
+      <button class="btn-secundario" id="modal-cancelar">Cancelar</button>
+      <button class="btn-peligro" id="modal-confirmar">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
