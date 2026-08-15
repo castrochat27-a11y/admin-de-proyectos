@@ -1,0 +1,45 @@
+name: Mantener activa la base de datos
+
+# Supabase pausa los proyectos gratuitos tras 7 días sin actividad.
+# Esta tarea consulta la base de datos cada 3 días para evitarlo.
+
+on:
+  schedule:
+    - cron: "0 13 */3 * *"   # cada 3 días, 13:00 UTC (7:00 a. m. Costa Rica)
+  workflow_dispatch:          # permite ejecutarla a mano desde la pestaña Actions
+
+jobs:
+  mantener-activa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar la base de datos
+        run: |
+          BASE="https://lurwsacrharocadxdahs.supabase.co"
+          CLAVE="sb_publishable_PXdvpdQ3QhopwmpaivIgkA_ObYZQ-yD"
+          URL="$BASE/rest/v1/keepalive?select=id&limit=1"
+
+          echo "Consultando la base de datos..."
+
+          for intento in 1 2 3; do
+            codigo=$(curl -s -o /tmp/respuesta.txt -w "%{http_code}" --max-time 60 \
+              -H "apikey: $CLAVE" \
+              -H "Authorization: Bearer $CLAVE" \
+              "$URL" || echo "000")
+
+            echo "Intento $intento -> HTTP $codigo"
+
+            if [ "$codigo" = "200" ]; then
+              echo "Respuesta: $(cat /tmp/respuesta.txt)"
+              echo "Base de datos activa. Todo en orden."
+              exit 0
+            fi
+
+            cat /tmp/respuesta.txt || true
+            sleep 20
+          done
+
+          echo ""
+          echo "No se pudo consultar la base de datos."
+          echo "Si el error es 401, falta ejecutar en Supabase el SQL que crea"
+          echo "la tabla 'keepalive' y le da permiso de lectura."
+          exit 1
