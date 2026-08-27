@@ -1,66 +1,88 @@
 // ===========================================================================
-// Control de Patrocinios y Donaciones
+// Hogar de Oro · Control de Patrocinios y Donaciones
 // Página estática que consulta Supabase directamente desde el navegador.
 // ===========================================================================
 
-const ESTADOS = [
-  "Pendiente de contactar",
-  "En espera de respuesta",
-  "En negociación",
-  "Aceptada",
-  "Donación realizada",
-  "Negada",
-];
+const ESTADOS = ["En gestión", "Donación conseguida", "Negada"];
 
 const ESTADOS_DESC = {
-  "Pendiente de contactar": "Todavía no se ha hecho el primer contacto con la empresa.",
-  "En espera de respuesta": "Ya se envió la propuesta y se espera que respondan.",
-  "En negociación": "La empresa mostró interés y se está definiendo el aporte.",
-  "Aceptada": "La empresa confirmó el patrocinio, pero el aporte aún no se recibe.",
-  "Donación realizada": "El aporte ya fue entregado y recibido.",
+  "En gestión": "Ya se contactó a la empresa: se espera respuesta o se está negociando el aporte.",
+  "Donación conseguida": "La empresa confirmó el aporte. Desde aquí se suma al valor total conseguido.",
   "Negada": "La empresa indicó que no desea participar.",
 };
 
 const ESTADOS_CLASE = {
-  "Pendiente de contactar": "e-pendiente",
-  "En espera de respuesta": "e-espera",
-  "En negociación": "e-negociacion",
-  "Aceptada": "e-aceptada",
-  "Donación realizada": "e-realizada",
+  "En gestión": "e-gestion",
+  "Donación conseguida": "e-realizada",
   "Negada": "e-negada",
 };
 
-const ASIGNACIONES_DESC = {
-  "Pendiente": "El aporte todavía no se ha destinado a ninguna actividad.",
-  "Asignado": "Ya se puso a disposición de otro equipo o actividad.",
+const ESTADO_RECIBIDO = "Donación conseguida";
+const ESTADO_GESTION = "En gestión";
+
+// Uso del aporte
+const USO_PENDIENTE = "Pendiente de usar";
+const USO_USADO = "Ya usado";
+const USO_DINERO = "Aporte en dinero";
+const USOS = [USO_PENDIENTE, USO_USADO, USO_DINERO];
+
+const USOS_DESC = {
+  [USO_PENDIENTE]: "Todavía está disponible. Debe indicar para qué actividad se va a usar.",
+  [USO_USADO]: "Ya se entregó o se ocupó. Pasa a la pantalla “Ya usado”.",
+  [USO_DINERO]: "Aporte en efectivo o transferencia. Pasa a la pantalla “Dinero”.",
 };
 
-const ESTADOS_EN_PROCESO = [
-  "Pendiente de contactar",
-  "En espera de respuesta",
-  "En negociación",
+const DESTINOS = [
+  "Ejecución del proyecto (materiales y mano de obra)",
+  "Bingos",
+  "Ventas dentro del TEC",
+  "Fiestas",
+  "Noches bailables",
+  "Actividades deportivas",
+  "Rifas",
 ];
 
-const ESTADO_RECIBIDO = "Donación realizada";
+const RESPONSABLES = [
+  "Andrey Enrique Arce Gutiérrez",
+  "Zyan Levi Bolaños Arias",
+  "Naomy Castro Mairena",
+  "Loanna Castro Morales",
+  "Marco Rodrigo Corrales Barrantes",
+  "Gabriel Del Campo Gutiérrez",
+  "Karim Figueroa Zúñiga",
+  "Zhaid Gómez Alcázar",
+  "Karina Gómez Sánchez",
+  "Elisa Gutiérrez Feoli",
+  "Ariela Lucía Hernández Araya",
+  "Melany Hernández Solís",
+  "Israel Larios Zamora",
+  "Juan Pablo Mora Brenes",
+  "Jixia Nova Rodríguez",
+  "Oscar Palma Castellón",
+  "Elián Porras Zúñiga",
+  "María José Rodríguez Chanto",
+  "María José Varela Montoya",
+  "Luis Alejandro Varela Viloria",
+];
+
+const TIPOS_SUGERIDOS = [
+  "Dinero", "Comida", "Postres", "Bebidas", "Servicios", "Materiales",
+  "Entradas", "Rifa", "Deporte", "Cupones", "Impresiones",
+];
 
 const CAMPOS = [
-  "empresa",
-  "contacto",
-  "responsable",
-  "estado",
-  "tipo_aporte",
-  "descripcion",
-  "valor_aproximado",
-  "asignacion",
-  "observaciones",
+  "empresa", "contacto", "responsable", "estado", "tipo_aporte",
+  "descripcion", "valor_aproximado", "asignacion", "destino", "carta_url",
 ];
 
 // ===================== Conexión con Supabase =====================
 const API = `${window.CONFIG.SUPABASE_URL}/rest/v1/${window.CONFIG.TABLA}`;
 const AUTH = `${window.CONFIG.SUPABASE_URL}/auth/v1`;
+const ALMACEN = `${window.CONFIG.SUPABASE_URL}/storage/v1/object`;
+const BALDE = window.CONFIG.BALDE || "cartas";
 const LLAVE_SESION = "patrocinios_sesion";
 
-let sesion = null; // { access_token, refresh_token, expires_at }
+let sesion = null;
 
 function guardarSesion(datos) {
   sesion = {
@@ -68,47 +90,30 @@ function guardarSesion(datos) {
     refresh_token: datos.refresh_token,
     expires_at: Date.now() + (datos.expires_in || 3600) * 1000,
   };
-  try {
-    localStorage.setItem(LLAVE_SESION, JSON.stringify(sesion));
-  } catch (e) {
-    /* si el navegador bloquea el almacenamiento, la sesión dura solo esta visita */
-  }
+  try { localStorage.setItem(LLAVE_SESION, JSON.stringify(sesion)); } catch (e) {}
 }
 
 function leerSesion() {
   try {
     const guardado = localStorage.getItem(LLAVE_SESION);
     if (guardado) sesion = JSON.parse(guardado);
-  } catch (e) {
-    sesion = null;
-  }
+  } catch (e) { sesion = null; }
   return sesion;
 }
 
 function borrarSesion() {
   sesion = null;
-  try {
-    localStorage.removeItem(LLAVE_SESION);
-  } catch (e) {
-    /* sin efecto */
-  }
+  try { localStorage.removeItem(LLAVE_SESION); } catch (e) {}
 }
 
 async function iniciarSesion(correo, clave) {
   const res = await fetch(`${AUTH}/token?grant_type=password`, {
     method: "POST",
-    headers: {
-      apikey: window.CONFIG.SUPABASE_ANON_KEY,
-      "Content-Type": "application/json",
-    },
+    headers: { apikey: window.CONFIG.SUPABASE_ANON_KEY, "Content-Type": "application/json" },
     body: JSON.stringify({ email: correo, password: clave }),
   });
   const datos = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(
-      datos.error_description || datos.msg || "Correo o contraseña incorrectos."
-    );
-  }
+  if (!res.ok) throw new Error(datos.error_description || datos.msg || "Correo o contraseña incorrectos.");
   guardarSesion(datos);
   return sesion;
 }
@@ -117,10 +122,7 @@ async function renovarSesion() {
   if (!sesion || !sesion.refresh_token) return false;
   const res = await fetch(`${AUTH}/token?grant_type=refresh_token`, {
     method: "POST",
-    headers: {
-      apikey: window.CONFIG.SUPABASE_ANON_KEY,
-      "Content-Type": "application/json",
-    },
+    headers: { apikey: window.CONFIG.SUPABASE_ANON_KEY, "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: sesion.refresh_token }),
   });
   if (!res.ok) return false;
@@ -138,10 +140,7 @@ function cabeceras(extra = {}) {
 }
 
 async function pedir(url, opciones = {}, reintento = true) {
-  // Si el permiso está por vencer, se renueva antes de pedir.
-  if (sesion && sesion.expires_at && Date.now() > sesion.expires_at - 60000) {
-    await renovarSesion();
-  }
+  if (sesion && sesion.expires_at && Date.now() > sesion.expires_at - 60000) await renovarSesion();
 
   const opts = { ...opciones, headers: { ...cabeceras(), ...(opciones.headers || {}) } };
   const res = await fetch(url, opts);
@@ -152,470 +151,524 @@ async function pedir(url, opciones = {}, reintento = true) {
     mostrarLogin("Su sesión expiró. Vuelva a ingresar.");
     throw new Error("Sesión expirada.");
   }
-
   if (!res.ok) {
     let detalle = "";
-    try {
-      const d = await res.json();
-      detalle = d.message || d.hint || JSON.stringify(d);
-    } catch (e) {
-      detalle = `Error ${res.status}`;
-    }
+    try { const d = await res.json(); detalle = d.message || d.hint || JSON.stringify(d); }
+    catch (e) { detalle = `Error ${res.status}`; }
     throw new Error(detalle);
   }
-
   if (res.status === 204) return null;
   const texto = await res.text();
   return texto ? JSON.parse(texto) : null;
 }
 
+// Sube la carta al almacenamiento privado y devuelve la ruta del archivo.
+async function subirCarta(archivo) {
+  const limpio = archivo.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const ruta = `${Date.now()}_${limpio}`;
+  const res = await fetch(`${ALMACEN}/${BALDE}/${ruta}`, {
+    method: "POST",
+    headers: {
+      apikey: window.CONFIG.SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${sesion ? sesion.access_token : ""}`,
+      "x-upsert": "true",
+    },
+    body: archivo,
+  });
+  if (!res.ok) throw new Error("No se pudo subir la carta.");
+  return ruta;
+}
+
+// El archivo es privado: se pide un enlace temporal para poder verlo.
+async function abrirCarta(ruta) {
+  const ventana = window.open("", "_blank");
+  try {
+    if (/^https?:\/\//.test(ruta)) { ventana.location = ruta; return; }
+    const res = await fetch(`${window.CONFIG.SUPABASE_URL}/storage/v1/object/sign/${BALDE}/${ruta}`, {
+      method: "POST",
+      headers: cabeceras(),
+      body: JSON.stringify({ expiresIn: 3600 }),
+    });
+    if (!res.ok) throw new Error("No se pudo abrir la carta.");
+    const datos = await res.json();
+    ventana.location = `${window.CONFIG.SUPABASE_URL}/storage/v1${datos.signedURL}`;
+  } catch (e) {
+    if (ventana) ventana.close();
+    avisar(e.message, true);
+  }
+}
+
 // ===================== Estado de la aplicación =====================
-let estadoActual = "";
-let todos = [];        // todos los registros descargados
-let visibles = [];     // los que se muestran según pantalla y filtros
-let pendienteBorrar = null;
+let estadoActual = "";     // pestaña por estado
+let usoActual = "";        // "", USO_PENDIENTE, "usado"
+let destinoActual = "";    // chip de destino
+let todos = [];
+let visibles = [];
+let idParaBorrar = null;
 
 const form = document.getElementById("formulario");
-const cuerpoTabla = document.getElementById("cuerpo-tabla");
-const vacio = document.getElementById("vacio");
-const btnGuardar = document.getElementById("btn-guardar");
-const btnCancelar = document.getElementById("btn-cancelar");
 
 // ===================== Utilidades =====================
-function escapar(texto) {
-  const div = document.createElement("div");
-  div.textContent = texto == null ? "" : texto;
-  return div.innerHTML;
+function escapar(t) {
+  return String(t ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-function celda(valor, larga = false) {
-  return `<td class="${larga ? "celda-larga" : ""}">${valor ? escapar(valor) : "—"}</td>`;
+function colones(n) {
+  if (n === null || n === undefined || n === "") return "—";
+  const num = Number(n);
+  if (isNaN(num)) return "—";
+  return "₡" + num.toLocaleString("es-CR", { maximumFractionDigits: 0 });
 }
 
-function moneda(valor) {
-  if (valor === null || valor === undefined || valor === "") return `<td class="numero">—</td>`;
-  return `<td class="numero">₡${Number(valor).toLocaleString("es-CR")}</td>`;
+function avisar(texto, esError = false) {
+  const caja = document.getElementById("aviso");
+  caja.textContent = texto;
+  caja.className = "aviso" + (esError ? " error" : "");
+  clearTimeout(avisar.t);
+  avisar.t = setTimeout(() => caja.classList.add("oculto"), 4000);
 }
 
-function etiquetaEstado(valor) {
-  if (!valor) return `<td>—</td>`;
-  return `<td><span class="etiqueta-estado ${ESTADOS_CLASE[valor] || ""}">${escapar(valor)}</span></td>`;
+function mostrarLogin(mensaje = "") {
+  document.getElementById("aplicacion").classList.add("oculto");
+  document.getElementById("pantalla-login").classList.remove("oculto");
+  const err = document.getElementById("login-error");
+  err.textContent = mensaje;
+  err.classList.toggle("oculto", !mensaje);
 }
 
-function mostrarAviso(mensaje, esError = false) {
-  const aviso = document.getElementById("aviso");
-  aviso.textContent = mensaje;
-  aviso.className = "aviso" + (esError ? " error" : "");
-  clearTimeout(aviso._t);
-  aviso._t = setTimeout(() => aviso.classList.add("oculto"), 3600);
+function esPendiente(r) { return (r.asignacion || "") === USO_PENDIENTE; }
+function esUsadoODinero(r) {
+  const a = r.asignacion || "";
+  return a === USO_USADO || a === USO_DINERO;
 }
 
-function mostrarProblemaConexion(mensaje) {
-  const caja = document.getElementById("aviso-conexion");
-  caja.innerHTML = `<strong>No hay conexión con la base de datos.</strong> ${escapar(mensaje)}`;
-  caja.classList.remove("oculto");
+// ===================== Listas del formulario =====================
+function llenarListas() {
+  document.getElementById("select-estado").innerHTML =
+    ESTADOS.map((e) => `<option value="${escapar(e)}">${escapar(e)}</option>`).join("");
+
+  document.getElementById("select-uso").innerHTML =
+    `<option value="">— Seleccione —</option>` +
+    USOS.map((u) => `<option value="${escapar(u)}">${escapar(u)}</option>`).join("");
+
+  document.getElementById("select-destino").innerHTML =
+    `<option value="">— Seleccione la actividad —</option>` +
+    DESTINOS.map((d) => `<option value="${escapar(d)}">${escapar(d)}</option>`).join("");
+
+  document.getElementById("select-responsable").innerHTML =
+    `<option value="">— Seleccione su nombre —</option>` +
+    RESPONSABLES.map((r) => `<option value="${escapar(r)}">${escapar(r)}</option>`).join("");
+
+  document.getElementById("lista-tipos").innerHTML =
+    TIPOS_SUGERIDOS.map((t) => `<option value="${escapar(t)}">`).join("");
+
+  document.getElementById("f-responsable").innerHTML =
+    `<option value="">Todos los responsables</option>` +
+    RESPONSABLES.map((r) => `<option value="${escapar(r)}">${escapar(r)}</option>`).join("");
 }
 
-function limpiarValor(valor) {
-  if (valor === null || valor === undefined) return null;
-  const texto = String(valor).trim().replace(/[₡$\s,]/g, "");
-  if (!texto) return null;
-  const n = Number(texto);
-  return Number.isFinite(n) && n >= 0 ? n : null;
+function actualizarAyudas() {
+  const estado = document.getElementById("select-estado").value;
+  document.getElementById("ayuda-estado").textContent = ESTADOS_DESC[estado] || "";
+
+  // El aporte solo se detalla cuando la donación ya está conseguida.
+  const conseguida = estado === ESTADO_RECIBIDO;
+  document.querySelectorAll(".solo-conseguida").forEach((el) => el.classList.toggle("oculto", !conseguida));
+  document.getElementById("nota-estado").classList.toggle("oculto", conseguida);
+  document.getElementById("select-uso").required = conseguida;
+
+  const uso = document.getElementById("select-uso").value;
+  document.getElementById("ayuda-uso").textContent = USOS_DESC[uso] || "";
+
+  const pendiente = conseguida && uso === USO_PENDIENTE;
+  document.getElementById("campo-destino").classList.toggle("oculto", !pendiente);
+  document.getElementById("select-destino").required = pendiente;
 }
 
-function fechaCorta(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d)) return "";
-  return d.toLocaleDateString("es-CR", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
-
-// ===================== Carga de datos =====================
+// ===================== Cargar y dibujar =====================
 async function cargar() {
   try {
-    const datos = await pedir(`${API}?select=*&order=id.desc`);
-    todos = datos || [];
-    document.getElementById("aviso-conexion").classList.add("oculto");
+    todos = (await pedir(`${API}?select=*&order=id.desc`)) || [];
     aplicarFiltros();
-    actualizarResumen();
   } catch (e) {
-    mostrarProblemaConexion(e.message);
+    avisar(e.message, true);
   }
 }
 
 function aplicarFiltros() {
-  const buscar = document.getElementById("f-buscar").value.trim().toLowerCase();
-  const responsable = document.getElementById("f-responsable").value.trim().toLowerCase();
+  const texto = document.getElementById("f-buscar").value.trim().toLowerCase();
+  const resp = document.getElementById("f-responsable").value;
 
   visibles = todos.filter((r) => {
     if (estadoActual && r.estado !== estadoActual) return false;
-    if (buscar && !(r.empresa || "").toLowerCase().includes(buscar)) return false;
-    if (responsable && !(r.responsable || "").toLowerCase().includes(responsable)) return false;
+    if (usoActual && (r.asignacion || "") !== usoActual) return false;
+    if (destinoActual && (r.destino || "") !== destinoActual) return false;
+    if (resp && r.responsable !== resp) return false;
+    if (texto) {
+      const todoElTexto = [
+        r.empresa, r.contacto, r.responsable, r.estado, r.tipo_aporte,
+        r.descripcion, r.asignacion, r.destino, r.valor_aproximado,
+      ].join(" ").toLowerCase();
+      if (!todoElTexto.includes(texto)) return false;
+    }
     return true;
   });
 
-  render();
+  dibujarTabla();
+  dibujarResumen();
+  dibujarConteos();
+  dibujarChips();
 }
 
-function render() {
-  cuerpoTabla.innerHTML = "";
-  vacio.classList.toggle("oculto", visibles.length > 0);
+function dibujarTabla() {
+  const cuerpo = document.getElementById("cuerpo-tabla");
+  cuerpo.innerHTML = visibles.map((r) => {
+    const carta = r.carta_url
+      ? `<button class="enlace-carta" data-carta="${escapar(r.carta_url)}">Ver</button>`
+      : "—";
+    const uso = r.asignacion
+      ? `<div class="marca-uso"><b>${escapar(r.asignacion)}</b>${r.destino ? `<span>${escapar(r.destino)}</span>` : ""}</div>`
+      : "—";
+    return `<tr>
+      <td>${r.id}</td>
+      <td><strong>${escapar(r.empresa)}</strong></td>
+      <td>${escapar(r.contacto) || "—"}</td>
+      <td>${escapar(r.responsable) || "—"}</td>
+      <td><span class="etiqueta-estado ${ESTADOS_CLASE[r.estado] || ""}">${escapar(r.estado)}</span></td>
+      <td>${escapar(r.tipo_aporte) || "—"}</td>
+      <td>${escapar(r.descripcion) || "—"}</td>
+      <td>${colones(r.valor_aproximado)}</td>
+      <td>${uso}</td>
+      <td>${carta}</td>
+      <td><div class="acciones-fila">
+        <button class="btn-secundario mini" data-editar="${r.id}">Editar</button>
+        <button class="btn-peligro mini" data-borrar="${r.id}">Borrar</button>
+      </div></td>
+    </tr>`;
+  }).join("");
 
-  visibles.forEach((r, i) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML =
-      `<td>${visibles.length - i}</td>` +
-      celda(r.empresa) +
-      celda(r.contacto, true) +
-      celda(r.responsable) +
-      etiquetaEstado(r.estado) +
-      celda(r.tipo_aporte, true) +
-      celda(r.descripcion, true) +
-      moneda(r.valor_aproximado) +
-      celda(r.asignacion) +
-      `<td><div class="acciones-fila">
-         <button class="btn-secundario" data-accion="editar" data-id="${r.id}">Editar</button>
-         <button class="btn-peligro" data-accion="borrar" data-id="${r.id}">Borrar</button>
-       </div></td>`;
-    cuerpoTabla.appendChild(tr);
-  });
-
-  cuerpoTabla.querySelectorAll("[data-accion]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = Number(btn.dataset.id);
-      if (btn.dataset.accion === "editar") editar(id);
-      else pedirBorrado(id);
-    });
-  });
+  document.getElementById("vacio").classList.toggle("oculto", visibles.length > 0);
 }
 
-function actualizarResumen() {
-  const porEstado = {};
-  ESTADOS.forEach((e) => (porEstado[e] = 0));
+function dibujarResumen() {
+  const resp = document.getElementById("f-responsable").value;
+  const recibido = visibles
+    .filter((r) => r.estado === ESTADO_RECIBIDO)
+    .reduce((s, r) => s + (Number(r.valor_aproximado) || 0), 0);
 
-  let recibido = 0;
-  todos.forEach((r) => {
-    if (porEstado[r.estado] !== undefined) porEstado[r.estado]++;
-    if (r.estado === ESTADO_RECIBIDO && r.valor_aproximado) {
-      recibido += Number(r.valor_aproximado);
-    }
-  });
+  document.getElementById("r-total").textContent = visibles.length;
+  document.getElementById("r-proceso").textContent = visibles.filter((r) => r.estado === ESTADO_GESTION).length;
+  document.getElementById("r-recibidas").textContent = visibles.filter((r) => r.estado === ESTADO_RECIBIDO).length;
+  document.getElementById("r-monto").textContent = colones(recibido);
+  document.getElementById("r-monto-txt").textContent = resp
+    ? `Monto logrado por ${resp.split(" ")[0]}`
+    : "Valor total conseguido";
+}
 
-  const enProceso = ESTADOS_EN_PROCESO.reduce((s, e) => s + (porEstado[e] || 0), 0);
+function dibujarConteos() {
+  const cuenta = (e) => todos.filter((r) => {
+    if (e && r.estado !== e) return false;
+    if (usoActual && (r.asignacion || "") !== usoActual) return false;
+    return true;
+  }).length;
 
-  document.getElementById("r-total").textContent = todos.length;
-  document.getElementById("r-proceso").textContent = enProceso;
-  document.getElementById("r-recibidas").textContent = porEstado[ESTADO_RECIBIDO] || 0;
-  document.getElementById("r-monto").textContent = "₡" + recibido.toLocaleString("es-CR");
-
-  document.getElementById("c-todos").textContent = todos.length;
   document.querySelectorAll("[data-conteo]").forEach((el) => {
-    el.textContent = porEstado[el.dataset.conteo] || 0;
+    el.textContent = cuenta(el.dataset.conteo);
   });
 }
 
-// ===================== Formulario =====================
-function editar(id) {
-  const r = todos.find((x) => x.id === id);
-  if (!r) return;
+function dibujarChips() {
+  const caja = document.getElementById("chips-destino");
+  if (!usoAplica() || usoActual !== USO_PENDIENTE) { caja.innerHTML = ""; return; }
 
-  form.elements["id"].value = r.id;
-  CAMPOS.forEach((campo) => {
-    if (form.elements[campo]) {
-      const v = r[campo];
-      form.elements[campo].value = v === null || v === undefined ? "" : v;
-    }
+  const base = todos.filter((r) => esPendiente(r) && (!estadoActual || r.estado === estadoActual));
+  const total = base.reduce((s, r) => s + (Number(r.valor_aproximado) || 0), 0);
+
+  caja.innerHTML =
+    `<button class="chip ${destinoActual ? "" : "activa"}" data-destino="">Todas las actividades
+       <span class="monto">${base.length} · ${colones(total)}</span></button>` +
+    DESTINOS.map((d) => {
+      const lista = base.filter((r) => (r.destino || "") === d);
+      const monto = lista.reduce((s, r) => s + (Number(r.valor_aproximado) || 0), 0);
+      return `<button class="chip ${destinoActual === d ? "activa" : ""}" data-destino="${escapar(d)}">${escapar(d)}
+        <span class="monto">${lista.length} · ${colones(monto)}</span></button>`;
+    }).join("");
+
+  caja.querySelectorAll(".chip").forEach((c) => {
+    c.onclick = () => { destinoActual = c.dataset.destino; aplicarFiltros(); };
   });
-
-  btnCancelar.classList.remove("oculto");
-  btnGuardar.textContent = "Guardar cambios";
-  document.getElementById("titulo-form").textContent = `Editando: ${r.empresa}`;
-  actualizarAyudas();
-  document.getElementById("titulo-form").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-function reiniciar() {
-  form.reset();
-  form.elements["id"].value = "";
-  btnCancelar.classList.add("oculto");
-  btnGuardar.textContent = "Guardar registro";
-  document.getElementById("titulo-form").textContent = "Agregar registro";
-  form.elements["estado"].value = estadoActual || ESTADOS[0];
-  actualizarAyudas();
+// ===================== Pestañas =====================
+function dibujarPestanas() {
+  document.getElementById("pestanas").innerHTML =
+    `<button class="pestana activa" data-estado="">Todos <span class="conteo" data-conteo=""></span></button>` +
+    ESTADOS.map((e) =>
+      `<button class="pestana" data-estado="${escapar(e)}">${escapar(e)} <span class="conteo" data-conteo="${escapar(e)}"></span></button>`
+    ).join("");
+
+  document.querySelectorAll(".pestana").forEach((btn) => {
+    btn.onclick = () => {
+      document.querySelectorAll(".pestana").forEach((b) => b.classList.remove("activa"));
+      btn.classList.add("activa");
+      estadoActual = btn.dataset.estado || "";
+      document.getElementById("desc-pantalla").textContent =
+        estadoActual ? ESTADOS_DESC[estadoActual] : "Todos los registros ingresados.";
+      if (!form.elements["id"].value) form.elements["estado"].value = estadoActual || ESTADOS[0];
+      actualizarAyudas();
+      dibujarBarraUso();
+      aplicarFiltros();
+    };
+  });
 }
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
+// La barra de uso solo tiene sentido donde hay aportes conseguidos.
+function usoAplica() {
+  return estadoActual === "" || estadoActual === ESTADO_RECIBIDO;
+}
 
-  const empresa = form.elements["empresa"].value.trim();
-  if (!empresa) {
-    mostrarAviso("El nombre de la empresa es obligatorio.", true);
+function dibujarBarraUso() {
+  const caja0 = document.getElementById("barra-uso");
+  if (!usoAplica()) {
+    usoActual = "";
+    destinoActual = "";
+    caja0.innerHTML = "";
+    document.getElementById("chips-destino").innerHTML = "";
     return;
   }
+  const opciones = [
+    { v: "", t: "Todo" },
+    { v: USO_PENDIENTE, t: "Por usar" },
+    { v: USO_USADO, t: "Ya usado" },
+    { v: USO_DINERO, t: "Dinero" },
+  ];
+  const caja = document.getElementById("barra-uso");
+  caja.innerHTML = opciones.map((o) =>
+    `<button class="btn-uso ${usoActual === o.v ? "activa" : ""}" data-uso="${o.v}">${o.t}</button>`).join("");
+  caja.querySelectorAll(".btn-uso").forEach((b) => {
+    b.onclick = () => {
+      usoActual = b.dataset.uso;
+      if (usoActual !== USO_PENDIENTE) destinoActual = "";
+      dibujarBarraUso();
+      aplicarFiltros();
+    };
+  });
+}
 
-  const ahora = new Date().toISOString();
-  const datos = { actualizado_en: ahora };
-  CAMPOS.forEach((campo) => {
-    if (!form.elements[campo]) return;
-    const valor = form.elements[campo].value;
-    datos[campo] = campo === "valor_aproximado" ? limpiarValor(valor) : String(valor).trim();
+// ===================== Guardar =====================
+form.onsubmit = async (e) => {
+  e.preventDefault();
+  const boton = document.getElementById("btn-guardar");
+  const datos = {};
+  CAMPOS.forEach((c) => {
+    if (c === "carta_url") return;
+    const campo = form.elements[c];
+    if (campo) datos[c] = campo.value.trim ? campo.value.trim() : campo.value;
   });
 
+  if (!datos.responsable) { avisar("Escoja el responsable.", true); return; }
+  if (datos.estado !== ESTADO_RECIBIDO) {
+    datos.tipo_aporte = "";
+    datos.valor_aproximado = "";
+    datos.asignacion = "";
+    datos.destino = "";
+  }
+  if (datos.asignacion === USO_PENDIENTE && !datos.destino) {
+    avisar("Indique para qué actividad se va a usar el aporte.", true); return;
+  }
+  if (datos.asignacion !== USO_PENDIENTE) datos.destino = "";
+  datos.valor_aproximado = datos.valor_aproximado === "" ? null : Number(datos.valor_aproximado);
+
   const id = form.elements["id"].value;
-  btnGuardar.disabled = true;
+  boton.disabled = true;
+  boton.textContent = "Guardando...";
 
   try {
+    const archivo = document.getElementById("archivo-carta").files[0];
+    if (archivo) {
+      boton.textContent = "Subiendo carta...";
+      datos.carta_url = await subirCarta(archivo);
+    }
+
     if (id) {
       await pedir(`${API}?id=eq.${id}`, {
         method: "PATCH",
         headers: { Prefer: "return=representation" },
         body: JSON.stringify(datos),
       });
+      avisar(`Registro actualizado. Ahora aparece en "${datos.estado}".`);
     } else {
-      datos.creado_en = ahora;
       await pedir(API, {
         method: "POST",
         headers: { Prefer: "return=representation" },
         body: JSON.stringify(datos),
       });
+      avisar(`Registro guardado en la pantalla "${datos.estado}".`);
     }
-
-    const estadoGuardado = datos.estado;
-    reiniciar();
+    limpiarFormulario();
     await cargar();
-    mostrarAviso(
-      id
-        ? `Registro actualizado. Ahora aparece en "${estadoGuardado}".`
-        : `Registro guardado en la pantalla "${estadoGuardado}".`
-    );
   } catch (err) {
-    mostrarAviso("No se pudo guardar: " + err.message, true);
+    avisar(err.message, true);
   } finally {
-    btnGuardar.disabled = false;
+    boton.disabled = false;
+    boton.textContent = "Guardar registro";
+  }
+};
+
+function limpiarFormulario() {
+  form.reset();
+  form.elements["id"].value = "";
+  form.elements["estado"].value = estadoActual || ESTADOS[0];
+  document.getElementById("archivo-carta").value = "";
+  document.getElementById("titulo-form").textContent = "Agregar registro";
+  document.getElementById("btn-cancelar").classList.add("oculto");
+  actualizarAyudas();
+}
+
+document.getElementById("btn-cancelar").onclick = limpiarFormulario;
+
+// ===================== Editar y borrar =====================
+document.getElementById("cuerpo-tabla").addEventListener("click", (e) => {
+  const editar = e.target.dataset.editar;
+  const borrar = e.target.dataset.borrar;
+  const carta = e.target.dataset.carta;
+
+  if (carta) { abrirCarta(carta); return; }
+
+  if (editar) {
+    const r = todos.find((x) => String(x.id) === editar);
+    if (!r) return;
+    CAMPOS.forEach((c) => {
+      if (form.elements[c]) form.elements[c].value = r[c] ?? "";
+    });
+    form.elements["id"].value = r.id;
+    document.getElementById("titulo-form").textContent = `Editando: ${r.empresa}`;
+    document.getElementById("btn-cancelar").classList.remove("oculto");
+    document.getElementById("ayuda-carta").textContent = r.carta_url
+      ? "Ya tiene una carta subida. Si escoge otra, se reemplaza."
+      : "Puede subir la carta o la nota que se envió. PDF, Word o imagen.";
+    abrirFormulario();
+    actualizarAyudas();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  if (borrar) {
+    idParaBorrar = borrar;
+    const r = todos.find((x) => String(x.id) === borrar);
+    document.getElementById("modal-texto").textContent =
+      `¿Seguro que desea eliminar el registro de ${r ? r.empresa : "esta empresa"}?`;
+    document.getElementById("modal-fondo").classList.remove("oculto");
   }
 });
 
-btnCancelar.addEventListener("click", reiniciar);
-
-// ===================== Borrado =====================
-function pedirBorrado(id) {
-  const r = todos.find((x) => x.id === id);
-  pendienteBorrar = id;
-  document.getElementById("modal-texto").textContent = r
-    ? `¿Seguro que desea eliminar el registro de "${r.empresa}"? Esta acción no se puede deshacer.`
-    : "¿Seguro que desea eliminar este registro?";
-  document.getElementById("modal-fondo").classList.remove("oculto");
-}
-
-document.getElementById("modal-cancelar").addEventListener("click", () => {
-  pendienteBorrar = null;
+document.getElementById("modal-cancelar").onclick = () => {
   document.getElementById("modal-fondo").classList.add("oculto");
-});
+  idParaBorrar = null;
+};
 
-document.getElementById("modal-confirmar").addEventListener("click", async () => {
-  if (pendienteBorrar === null) return;
-  const id = pendienteBorrar;
-  pendienteBorrar = null;
-  document.getElementById("modal-fondo").classList.add("oculto");
-
+document.getElementById("modal-confirmar").onclick = async () => {
+  if (!idParaBorrar) return;
   try {
-    await pedir(`${API}?id=eq.${id}`, { method: "DELETE" });
+    await pedir(`${API}?id=eq.${idParaBorrar}`, { method: "DELETE" });
+    avisar("Registro eliminado.");
     await cargar();
-    mostrarAviso("Registro eliminado.");
   } catch (e) {
-    mostrarAviso("No se pudo eliminar: " + e.message, true);
+    avisar(e.message, true);
   }
-});
+  document.getElementById("modal-fondo").classList.add("oculto");
+  idParaBorrar = null;
+};
 
-// ===================== Pestañas por estado =====================
-function construirPestanas() {
-  const nav = document.getElementById("pestanas");
-  nav.innerHTML =
-    `<button class="pestana activa" data-estado="">Todos <span class="conteo" id="c-todos">0</span></button>` +
-    ESTADOS.map(
-      (e) =>
-        `<button class="pestana" data-estado="${escapar(e)}">${escapar(e)} <span class="conteo" data-conteo="${escapar(e)}">0</span></button>`
-    ).join("");
-
-  nav.querySelectorAll(".pestana").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      nav.querySelectorAll(".pestana").forEach((b) => b.classList.remove("activa"));
-      btn.classList.add("activa");
-      estadoActual = btn.dataset.estado || "";
-
-      document.getElementById("desc-pantalla").textContent = estadoActual
-        ? ESTADOS_DESC[estadoActual] || ""
-        : "Todos los registros ingresados.";
-
-      if (!form.elements["id"].value) {
-        form.elements["estado"].value = estadoActual || ESTADOS[0];
-        actualizarAyudas();
-      }
-      aplicarFiltros();
-    });
+// ===================== Excel =====================
+document.getElementById("btn-excel").onclick = () => {
+  if (typeof XLSX === "undefined") { avisar("No se pudo cargar el generador de Excel.", true); return; }
+  const libro = XLSX.utils.book_new();
+  const fila = (r) => ({
+    "#": r.id,
+    Empresa: r.empresa || "",
+    Contacto: r.contacto || "",
+    Responsable: r.responsable || "",
+    Estado: r.estado || "",
+    "Tipo de aporte": r.tipo_aporte || "",
+    "Detalle y observaciones": r.descripcion || "",
+    "Valor aproximado": r.valor_aproximado || "",
+    Uso: r.asignacion || "",
+    "Se usará en": r.destino || "",
+    Carta: r.carta_url || "",
   });
-}
-
-function llenarSelectEstados() {
-  const sel = document.getElementById("select-estado");
-  sel.innerHTML = ESTADOS.map((e) => `<option value="${escapar(e)}">${escapar(e)}</option>`).join("");
-}
-
-// ===================== Ayudas dinámicas =====================
-function actualizarAyudas() {
-  const estado = document.getElementById("select-estado").value;
-  document.getElementById("ayuda-estado").textContent = ESTADOS_DESC[estado] || "";
-
-  const asignacion = document.getElementById("select-asignacion").value;
-  document.getElementById("ayuda-asignacion").textContent = ASIGNACIONES_DESC[asignacion] || "";
-
-  document
-    .getElementById("campo-asignacion")
-    .classList.toggle("atenuado", estado !== ESTADO_RECIBIDO);
-}
-
-// ===================== Descarga de Excel =====================
-document.getElementById("btn-excel").addEventListener("click", () => {
-  if (typeof XLSX === "undefined") {
-    mostrarAviso("No se pudo cargar el generador de Excel. Revise su conexión.", true);
-    return;
-  }
-
-  const encabezados = [
-    "#", "Empresa", "Contacto", "Responsable", "Estado", "Tipo de aporte",
-    "Descripción", "Valor aproximado", "Asignación", "Observaciones",
-    "Registrado", "Última actualización",
-  ];
-
-  const aFilas = (lista) => {
-    const filas = [encabezados];
-    lista.forEach((r, i) => {
-      filas.push([
-        i + 1,
-        r.empresa || "",
-        r.contacto || "",
-        r.responsable || "",
-        r.estado || "",
-        r.tipo_aporte || "",
-        r.descripcion || "",
-        r.valor_aproximado === null || r.valor_aproximado === undefined
-          ? ""
-          : Number(r.valor_aproximado),
-        r.asignacion || "",
-        r.observaciones || "",
-        fechaCorta(r.creado_en),
-        fechaCorta(r.actualizado_en),
-      ]);
-    });
-    return filas;
-  };
-
-  const anchos = [
-    { wch: 5 }, { wch: 32 }, { wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 26 },
-    { wch: 34 }, { wch: 18 }, { wch: 14 }, { wch: 30 }, { wch: 13 }, { wch: 18 },
-  ];
-
-  const ordenados = [...todos].sort((a, b) => a.id - b.id);
-  const wb = XLSX.utils.book_new();
 
   const agregar = (nombre, lista) => {
-    const ws = XLSX.utils.aoa_to_sheet(aFilas(lista));
-    ws["!cols"] = anchos;
-    ws["!freeze"] = { xSplit: 0, ySplit: 1 };
-    XLSX.utils.book_append_sheet(wb, ws, nombre.slice(0, 31));
+    if (!lista.length) return;
+    XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(lista.map(fila)), nombre.slice(0, 31));
   };
 
-  agregar("Todos los registros", ordenados);
-  ESTADOS.forEach((e) => agregar(e, ordenados.filter((r) => r.estado === e)));
+  const orden = [...todos].sort((a, b) => a.id - b.id);
+  agregar("Todos", orden);
+  ESTADOS.forEach((e) => agregar(e, orden.filter((r) => r.estado === e)));
+  DESTINOS.forEach((d) => agregar("Por usar - " + d.split(" ")[0], orden.filter((r) => esPendiente(r) && r.destino === d)));
+  agregar("Ya usado", orden.filter((r) => (r.asignacion || "") === USO_USADO));
+  agregar("Dinero", orden.filter((r) => (r.asignacion || "") === USO_DINERO));
 
-  const hoy = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, `Control_Patrocinios_${hoy}.xlsx`);
-});
+  XLSX.writeFile(libro, "Patrocinios_Hogar_de_Oro.xlsx");
+};
 
-// ===================== Filtros =====================
+// ===================== Filtros y plegado =====================
 document.getElementById("f-buscar").addEventListener("input", aplicarFiltros);
-document.getElementById("f-responsable").addEventListener("input", aplicarFiltros);
+document.getElementById("f-responsable").addEventListener("change", aplicarFiltros);
+document.getElementById("btn-limpiar").onclick = () => {
+  document.getElementById("f-buscar").value = "";
+  document.getElementById("f-responsable").value = "";
+  destinoActual = "";
+  aplicarFiltros();
+};
 document.getElementById("select-estado").addEventListener("change", actualizarAyudas);
-document.getElementById("select-asignacion").addEventListener("change", actualizarAyudas);
+document.getElementById("select-uso").addEventListener("change", actualizarAyudas);
 
-// ===================== Ingreso y salida =====================
-function mostrarLogin(mensaje) {
-  document.getElementById("aplicacion").classList.add("oculto");
-  document.getElementById("pantalla-login").classList.remove("oculto");
-  const err = document.getElementById("login-error");
-  if (mensaje) {
-    err.textContent = mensaje;
-    err.classList.remove("oculto");
-  } else {
-    err.classList.add("oculto");
-  }
+function abrirFormulario() {
+  form.classList.remove("oculto");
+  document.getElementById("btn-plegar").textContent = "Ocultar formulario";
 }
+document.getElementById("btn-plegar").onclick = () => {
+  const oculto = form.classList.toggle("oculto");
+  document.getElementById("btn-plegar").textContent = oculto ? "Agregar registro" : "Ocultar formulario";
+};
 
-function mostrarAplicacion() {
-  document.getElementById("pantalla-login").classList.add("oculto");
-  document.getElementById("aplicacion").classList.remove("oculto");
-}
-
-document.getElementById("form-login").addEventListener("submit", async (e) => {
+// ===================== Ingreso y arranque =====================
+document.getElementById("form-login").onsubmit = async (e) => {
   e.preventDefault();
   const boton = document.getElementById("btn-entrar");
-  const err = document.getElementById("login-error");
-  err.classList.add("oculto");
   boton.disabled = true;
   boton.textContent = "Entrando...";
-
   try {
     await iniciarSesion(
       document.getElementById("login-correo").value.trim(),
       document.getElementById("login-clave").value
     );
-    document.getElementById("login-clave").value = "";
-    mostrarAplicacion();
-    await cargar();
-  } catch (error) {
-    err.textContent = error.message;
-    err.classList.remove("oculto");
+    arrancarApp();
+  } catch (err) {
+    const caja = document.getElementById("login-error");
+    caja.textContent = err.message;
+    caja.classList.remove("oculto");
   } finally {
     boton.disabled = false;
     boton.textContent = "Entrar";
   }
-});
+};
 
-document.getElementById("btn-salir").addEventListener("click", () => {
+document.getElementById("btn-salir").onclick = () => {
   borrarSesion();
-  todos = [];
-  visibles = [];
-  mostrarLogin();
-});
+  location.reload();
+};
 
-// ===================== Inicio =====================
-async function iniciar() {
-  llenarSelectEstados();
-  construirPestanas();
-  actualizarAyudas();
-
-  if (!window.CONFIG.SUPABASE_ANON_KEY || window.CONFIG.SUPABASE_ANON_KEY.startsWith("PEGAR")) {
-    mostrarLogin("Falta configurar la clave de acceso en el archivo config.js.");
-    return;
-  }
-
-  leerSesion();
-  if (sesion && sesion.refresh_token) {
-    // Se intenta reutilizar la sesión guardada.
-    if (Date.now() > sesion.expires_at - 60000) {
-      const ok = await renovarSesion();
-      if (!ok) {
-        borrarSesion();
-        mostrarLogin();
-        return;
-      }
-    }
-    mostrarAplicacion();
-    await cargar();
-  } else {
-    mostrarLogin();
-  }
+function arrancarApp() {
+  document.getElementById("pantalla-login").classList.add("oculto");
+  document.getElementById("aplicacion").classList.remove("oculto");
+  llenarListas();
+  dibujarPestanas();
+  dibujarBarraUso();
+  limpiarFormulario();
+  cargar();
 }
 
-iniciar();
+if (leerSesion()) arrancarApp();
