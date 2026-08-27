@@ -281,9 +281,21 @@ function actualizarAyudas() {
   const uso = document.getElementById("select-uso").value;
   document.getElementById("ayuda-uso").textContent = USOS_DESC[uso] || "";
 
+  // Pendiente de usar: lista de actividades. Ya usado: se escribe la actividad.
   const pendiente = conseguida && uso === USO_PENDIENTE;
-  document.getElementById("campo-destino").classList.toggle("oculto", !pendiente);
+  const usado = conseguida && uso === USO_USADO;
+
+  document.getElementById("campo-destino").classList.toggle("oculto", !(pendiente || usado));
+  document.getElementById("select-destino").classList.toggle("oculto", !pendiente);
+  document.getElementById("texto-destino").classList.toggle("oculto", !usado);
   document.getElementById("select-destino").required = pendiente;
+
+  document.getElementById("rotulo-destino").innerHTML = usado
+    ? "¿En qué actividad se usó?"
+    : "¿Para qué se va a usar? <span class=\"req\">*</span>";
+  document.getElementById("ayuda-destino").textContent = usado
+    ? "Escriba la actividad donde se entregó o se ocupó el aporte."
+    : "Obligatorio cuando el aporte está pendiente de usar.";
 }
 
 // ===================== Cargar y dibujar =====================
@@ -477,7 +489,11 @@ form.onsubmit = async (e) => {
   if (datos.asignacion === USO_PENDIENTE && !datos.destino) {
     avisar("Indique para qué actividad se va a usar el aporte.", true); return;
   }
-  if (datos.asignacion !== USO_PENDIENTE) datos.destino = "";
+  if (datos.asignacion === USO_USADO) {
+    datos.destino = document.getElementById("texto-destino").value.trim();
+  } else if (datos.asignacion !== USO_PENDIENTE) {
+    datos.destino = "";
+  }
   datos.valor_aproximado = datos.valor_aproximado === "" ? null : Number(datos.valor_aproximado);
 
   const id = form.elements["id"].value;
@@ -543,6 +559,12 @@ document.getElementById("cuerpo-tabla").addEventListener("click", (e) => {
       if (form.elements[c]) form.elements[c].value = r[c] ?? "";
     });
     form.elements["id"].value = r.id;
+    if ((r.asignacion || "") === USO_USADO) {
+      document.getElementById("texto-destino").value = r.destino || "";
+      document.getElementById("select-destino").value = "";
+    } else {
+      document.getElementById("texto-destino").value = "";
+    }
     document.getElementById("titulo-form").textContent = `Editando: ${r.empresa}`;
     document.getElementById("btn-cancelar").classList.remove("oculto");
     document.getElementById("ayuda-carta").textContent = r.carta_url
@@ -594,7 +616,7 @@ document.getElementById("btn-excel").onclick = () => {
     "Detalle y observaciones": r.descripcion || "",
     "Valor aproximado": r.valor_aproximado || "",
     Uso: r.asignacion || "",
-    "Se usará en": r.destino || "",
+    "Actividad": r.destino || "",
     Carta: r.carta_url || "",
   });
 
