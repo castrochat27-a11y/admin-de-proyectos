@@ -617,7 +617,7 @@ document.getElementById("btn-excel").onclick = () => {
     "Valor aproximado": r.valor_aproximado || "",
     Uso: r.asignacion || "",
     "Actividad": r.destino || "",
-    Carta: r.carta_url || "",
+    Carta: r.carta_url ? "Sí" : "",
   });
 
   const agregar = (nombre, lista) => {
@@ -633,6 +633,63 @@ document.getElementById("btn-excel").onclick = () => {
   agregar("Dinero", orden.filter((r) => (r.asignacion || "") === USO_DINERO));
 
   XLSX.writeFile(libro, "Patrocinios_Hogar_de_Oro.xlsx");
+};
+
+// ===================== Descargar todas las cartas =====================
+async function enlaceFirmado(ruta) {
+  if (/^https?:\/\//.test(ruta)) return ruta;
+  const res = await fetch(`${window.CONFIG.SUPABASE_URL}/storage/v1/object/sign/${BALDE}/${ruta}`, {
+    method: "POST",
+    headers: cabeceras(),
+    body: JSON.stringify({ expiresIn: 600 }),
+  });
+  if (!res.ok) throw new Error("No se pudo preparar el archivo.");
+  const datos = await res.json();
+  return `${window.CONFIG.SUPABASE_URL}/storage/v1${datos.signedURL}`;
+}
+
+function nombreLimpio(texto) {
+  return String(texto || "").replace(/[\\/:*?"<>|]/g, "-").trim().slice(0, 60);
+}
+
+document.getElementById("btn-cartas").onclick = async () => {
+  const conCarta = todos.filter((r) => r.carta_url);
+  if (!conCarta.length) { avisar("Todavía no hay cartas subidas.", true); return; }
+  if (typeof JSZip === "undefined") { avisar("No se pudo cargar el compresor de archivos.", true); return; }
+
+  const boton = document.getElementById("btn-cartas");
+  boton.disabled = true;
+  const zip = new JSZip();
+  let listos = 0, fallidos = 0;
+
+  for (const r of conCarta) {
+    boton.textContent = `Bajando ${listos + fallidos + 1} de ${conCarta.length}...`;
+    try {
+      const url = await enlaceFirmado(r.carta_url);
+      const archivo = await fetch(url);
+      if (!archivo.ok) throw new Error("archivo");
+      const extension = (r.carta_url.split(".").pop() || "pdf").split("?")[0];
+      zip.file(`${r.id} - ${nombreLimpio(r.empresa)}.${extension}`, await archivo.blob());
+      listos++;
+    } catch (e) {
+      fallidos++;
+    }
+  }
+
+  if (listos) {
+    const contenido = await zip.generateAsync({ type: "blob" });
+    const enlace = document.createElement("a");
+    enlace.href = URL.createObjectURL(contenido);
+    enlace.download = "Cartas_Hogar_de_Oro.zip";
+    enlace.click();
+    URL.revokeObjectURL(enlace.href);
+  }
+
+  boton.disabled = false;
+  boton.textContent = "Descargar cartas";
+  avisar(fallidos
+    ? `Se bajaron ${listos} cartas. ${fallidos} no se pudieron abrir.`
+    : `Listo: ${listos} cartas en la carpeta comprimida.`, fallidos > 0);
 };
 
 // ===================== Filtros y plegado =====================
