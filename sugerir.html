@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sugerir un patrocinio · Hogar de Oro</title>
+<link rel="stylesheet" href="style.css?v=4">
+<style>
+  .caja-sugerir {
+    background: #fff; max-width: 560px; margin: 0 auto; padding: 26px 26px 22px;
+    border: 1px solid var(--borde); border-top: 5px solid var(--oro);
+    border-radius: 14px; box-shadow: 0 10px 30px rgba(107, 68, 35, .12);
+  }
+  .cabecera-sugerir { text-align: center; margin-bottom: 18px; }
+  .cabecera-sugerir img { width: 96px; height: 96px; object-fit: contain; }
+  .cabecera-sugerir h1 { font-size: 21px; margin: 6px 0 4px; color: var(--cafe); }
+  .cabecera-sugerir p { margin: 0; font-size: 13.5px; color: var(--gris); }
+  #form-sugerir { display: grid; gap: 14px; }
+  .gracias { text-align: center; padding: 10px 0 4px; }
+  .gracias h2 { color: var(--verde); font-size: 20px; margin: 0 0 8px; }
+  .escondido { position: absolute; left: -9999px; }
+</style>
+</head>
+<body class="login-fondo" style="display:block; padding:28px 16px;">
+
+<div class="caja-sugerir">
+  <div class="cabecera-sugerir">
+    <img src="logo.png?v=4" alt="Hogar de Oro">
+    <h1>Sugerir un patrocinio</h1>
+    <p>¿Conoce un negocio o una persona que podría apoyar el proyecto? Cuéntenos y el equipo de Patrocinios se encarga del resto.</p>
+  </div>
+
+  <form id="form-sugerir">
+    <div class="campo">
+      <label>Empresa, negocio o persona <span class="req">*</span></label>
+      <input type="text" name="empresa" required placeholder="Nombre del negocio o de la persona">
+    </div>
+
+    <div class="campo">
+      <label>Contacto</label>
+      <input type="text" name="contacto" placeholder="Teléfono, correo, WhatsApp o Instagram">
+      <small class="ayuda">Lo que tenga a mano. Si no lo sabe, déjelo en blanco.</small>
+    </div>
+
+    <div class="campo">
+      <label>¿Qué podrían aportar?</label>
+      <textarea name="aporte" rows="3" placeholder="Ej. comida para una venta, un premio para la rifa, materiales, un descuento…"></textarea>
+    </div>
+
+    <div class="campo">
+      <label>Su nombre <span class="req">*</span></label>
+      <input type="text" name="sugerido_por" required placeholder="Para saber a quién preguntarle si necesitamos más datos">
+    </div>
+
+    <input type="text" name="sitio" class="escondido" tabindex="-1" autocomplete="off">
+
+    <button type="submit" class="btn-principal" id="btn-enviar">Enviar sugerencia</button>
+    <p class="login-error oculto" id="error"></p>
+  </form>
+
+  <div id="gracias" class="gracias oculto">
+    <h2>¡Gracias!</h2>
+    <p>La sugerencia le llegó al equipo de Patrocinios. Si necesitan más datos, lo buscan.</p>
+    <button type="button" class="btn-secundario" id="btn-otra">Enviar otra</button>
+  </div>
+</div>
+
+<script src="config.js?v=4"></script>
+<script>
+const TABLA_SUG = `${window.CONFIG.SUPABASE_URL}/rest/v1/sugerencias`;
+const formulario = document.getElementById("form-sugerir");
+
+formulario.onsubmit = async (e) => {
+  e.preventDefault();
+  const boton = document.getElementById("btn-enviar");
+  const error = document.getElementById("error");
+  error.classList.add("oculto");
+
+  // Casilla trampa: si viene llena es un programa automático, no una persona.
+  if (formulario.elements["sitio"].value) { mostrarGracias(); return; }
+
+  const datos = {
+    empresa: formulario.elements["empresa"].value.trim(),
+    contacto: formulario.elements["contacto"].value.trim(),
+    aporte: formulario.elements["aporte"].value.trim(),
+    sugerido_por: formulario.elements["sugerido_por"].value.trim(),
+  };
+
+  boton.disabled = true;
+  boton.textContent = "Enviando...";
+  try {
+    const res = await fetch(TABLA_SUG, {
+      method: "POST",
+      headers: {
+        apikey: window.CONFIG.SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${window.CONFIG.SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(datos),
+    });
+    if (!res.ok) throw new Error("No se pudo enviar. Intente de nuevo en un momento.");
+    mostrarGracias();
+  } catch (err) {
+    error.textContent = err.message;
+    error.classList.remove("oculto");
+  } finally {
+    boton.disabled = false;
+    boton.textContent = "Enviar sugerencia";
+  }
+};
+
+function mostrarGracias() {
+  formulario.reset();
+  formulario.classList.add("oculto");
+  document.getElementById("gracias").classList.remove("oculto");
+}
+
+document.getElementById("btn-otra").onclick = () => {
+  document.getElementById("gracias").classList.add("oculto");
+  formulario.classList.remove("oculto");
+};
+</script>
+</body>
+</html>

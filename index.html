@@ -41,6 +41,7 @@
       <p>Hogar de Oro</p>
     </div>
     <div class="cabecera-acciones">
+      <button class="btn-secundario" id="btn-sugerencias">Sugerencias <span class="globo" id="conteo-sugerencias">0</span></button>
       <button class="btn-excel" id="btn-excel">Descargar Excel</button>
       <button class="btn-secundario" id="btn-cartas">Descargar cartas</button>
       <button class="btn-salir" id="btn-salir">Salir</button>
@@ -138,6 +139,16 @@
         <button type="button" class="btn-secundario oculto" id="btn-cancelar">Cancelar edición</button>
       </div>
     </form>
+  </section>
+
+  <!-- ===== Sugerencias de otros compañeros ===== -->
+  <section class="caja oculto" id="panel-sugerencias">
+    <div class="cabecera-caja">
+      <h2>Sugerencias recibidas</h2>
+      <button type="button" class="btn-texto" id="btn-cerrar-sugerencias">Cerrar</button>
+    </div>
+    <p class="desc-pantalla">Las envían otros compañeros desde el enlace público. Al pasar una a la lista, el formulario de arriba se llena solo.</p>
+    <div id="lista-sugerencias"></div>
   </section>
 
   <!-- ===== Pantallas ===== -->

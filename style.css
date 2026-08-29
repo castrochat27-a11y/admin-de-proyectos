@@ -147,6 +147,21 @@ input[type="file"] { padding: 7px; background: var(--crema); }
 .chip.activa { background: var(--verde); border-color: var(--verde); color: #fff; }
 .chip .monto { opacity: .85; margin-left: 5px; }
 
+/* ===================== Sugerencias ===================== */
+.globo {
+  background: var(--rojo); color: #fff; border-radius: 10px; padding: 1px 7px;
+  font-size: 12px; margin-left: 5px;
+}
+.globo.vacio-cero { background: rgba(107, 68, 35, .18); color: var(--cafe); }
+.sugerencia {
+  border: 1px solid var(--borde); border-left: 4px solid var(--oro);
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: var(--crema);
+}
+.sugerencia h3 { margin: 0 0 4px; font-size: 15px; color: var(--cafe); }
+.sugerencia p { margin: 2px 0; font-size: 13.5px; }
+.sugerencia .quien { color: var(--gris); font-size: 12.5px; margin-top: 6px; }
+.sugerencia .acciones-sug { display: flex; gap: 8px; margin-top: 10px; }
+
 /* ===================== Filtros ===================== */
 .filtros { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
 #f-buscar { flex: 2; min-width: 260px; }

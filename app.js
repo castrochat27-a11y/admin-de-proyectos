@@ -80,6 +80,7 @@ const API = `${window.CONFIG.SUPABASE_URL}/rest/v1/${window.CONFIG.TABLA}`;
 const AUTH = `${window.CONFIG.SUPABASE_URL}/auth/v1`;
 const ALMACEN = `${window.CONFIG.SUPABASE_URL}/storage/v1/object`;
 const BALDE = window.CONFIG.BALDE || "cartas";
+const SUGERENCIAS = `${window.CONFIG.SUPABASE_URL}/rest/v1/sugerencias`;
 const LLAVE_SESION = "patrocinios_sesion";
 
 let sesion = null;
@@ -205,6 +206,8 @@ let destinoActual = "";    // chip de destino
 let todos = [];
 let visibles = [];
 let idParaBorrar = null;
+let sugerencias = [];
+let sugerenciaEnCurso = null;   // sugerencia que se está pasando a la lista
 
 const form = document.getElementById("formulario");
 
@@ -521,6 +524,16 @@ form.onsubmit = async (e) => {
         body: JSON.stringify(datos),
       });
       avisar(`Registro guardado en la pantalla "${datos.estado}".`);
+      if (sugerenciaEnCurso) {
+        try {
+          await pedir(`${SUGERENCIAS}?id=eq.${sugerenciaEnCurso}`, {
+            method: "PATCH",
+            body: JSON.stringify({ atendida: true }),
+          });
+        } catch (e) { /* si falla, la sugerencia queda pendiente */ }
+        sugerenciaEnCurso = null;
+        cargarSugerencias();
+      }
     }
     limpiarFormulario();
     await cargar();
@@ -533,6 +546,7 @@ form.onsubmit = async (e) => {
 };
 
 function limpiarFormulario() {
+  sugerenciaEnCurso = null;
   form.reset();
   form.elements["id"].value = "";
   form.elements["estado"].value = estadoActual || ESTADOS[0];
@@ -634,6 +648,91 @@ document.getElementById("btn-excel").onclick = () => {
 
   XLSX.writeFile(libro, "Patrocinios_Hogar_de_Oro.xlsx");
 };
+
+// ===================== Sugerencias de otros compañeros =====================
+function fechaCorta(texto) {
+  if (!texto) return "";
+  const f = new Date(texto);
+  return isNaN(f) ? "" : f.toLocaleDateString("es-CR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+async function cargarSugerencias() {
+  try {
+    sugerencias = (await pedir(`${SUGERENCIAS}?select=*&atendida=is.false&order=id.desc`)) || [];
+  } catch (e) {
+    sugerencias = [];
+  }
+  const globo = document.getElementById("conteo-sugerencias");
+  globo.textContent = sugerencias.length;
+  globo.classList.toggle("vacio-cero", sugerencias.length === 0);
+  dibujarSugerencias();
+}
+
+function dibujarSugerencias() {
+  const caja = document.getElementById("lista-sugerencias");
+  if (!sugerencias.length) {
+    caja.innerHTML = `<p class="vacio">Por ahora no hay sugerencias sin revisar.</p>`;
+    return;
+  }
+  caja.innerHTML = sugerencias.map((s) => `
+    <div class="sugerencia">
+      <h3>${escapar(s.empresa)}</h3>
+      ${s.contacto ? `<p><strong>Contacto:</strong> ${escapar(s.contacto)}</p>` : ""}
+      ${s.aporte ? `<p><strong>Podrían aportar:</strong> ${escapar(s.aporte)}</p>` : ""}
+      <p class="quien">Sugerido por ${escapar(s.sugerido_por) || "alguien sin nombre"} · ${fechaCorta(s.creado)}</p>
+      <div class="acciones-sug">
+        <button class="btn-principal mini" data-pasar="${s.id}">Pasar a la lista</button>
+        <button class="btn-secundario mini" data-descartar="${s.id}">Descartar</button>
+      </div>
+    </div>`).join("");
+}
+
+document.getElementById("lista-sugerencias").addEventListener("click", async (e) => {
+  const pasar = e.target.dataset.pasar;
+  const descartar = e.target.dataset.descartar;
+
+  if (pasar) {
+    const s = sugerencias.find((x) => String(x.id) === pasar);
+    if (!s) return;
+    limpiarFormulario();
+    form.elements["empresa"].value = s.empresa || "";
+    form.elements["contacto"].value = s.contacto || "";
+    form.elements["estado"].value = ESTADO_GESTION;
+    form.elements["descripcion"].value =
+      [s.aporte, s.sugerido_por ? `Sugerido por ${s.sugerido_por}` : ""].filter(Boolean).join(" · ");
+    sugerenciaEnCurso = s.id;
+    actualizarAyudas();
+    abrirFormulario();
+    document.getElementById("panel-sugerencias").classList.add("oculto");
+    avisar("Escoja el responsable y guarde. La sugerencia se marca como atendida al guardar.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  if (descartar) {
+    try {
+      await pedir(`${SUGERENCIAS}?id=eq.${descartar}`, {
+        method: "PATCH",
+        body: JSON.stringify({ atendida: true }),
+      });
+      avisar("Sugerencia descartada.");
+      cargarSugerencias();
+    } catch (err) {
+      avisar(err.message, true);
+    }
+  }
+});
+
+document.getElementById("btn-sugerencias").onclick = () => {
+  const panel = document.getElementById("panel-sugerencias");
+  panel.classList.toggle("oculto");
+  if (!panel.classList.contains("oculto")) {
+    cargarSugerencias();
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+};
+
+document.getElementById("btn-cerrar-sugerencias").onclick = () =>
+  document.getElementById("panel-sugerencias").classList.add("oculto");
 
 // ===================== Descargar todas las cartas =====================
 async function enlaceFirmado(ruta) {
@@ -748,6 +847,7 @@ function arrancarApp() {
   dibujarBarraUso();
   limpiarFormulario();
   cargar();
+  cargarSugerencias();
 }
 
 if (leerSesion()) arrancarApp();
