@@ -202,6 +202,34 @@ tr:hover td { background: #FFFCF3; }
 .mini { padding: 5px 10px; font-size: 12.5px; border-radius: 6px; }
 .vacio { text-align: center; color: var(--gris); padding: 24px 0; font-style: italic; }
 
+/* ===================== Generador de carta ===================== */
+.modal.modal-carta { max-width: 1120px; width: 100%; max-height: 92vh; overflow: auto; }
+.carta-columnas { display: grid; grid-template-columns: 330px 1fr; gap: 20px; margin-top: 12px; }
+.carta-datos { display: flex; flex-direction: column; gap: 12px; }
+.carta-botones { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.carta-vista {
+  background: #fff; border: 1px solid var(--borde); border-radius: 8px;
+  padding: 34px 38px; font-family: Calibri, "Segoe UI", sans-serif;
+  color: #2B2119; font-size: 13px; line-height: 1.5; overflow: auto; max-height: 74vh;
+}
+.carta-vista .membrete { display: flex; align-items: center; gap: 16px; }
+.carta-vista .membrete img { width: 92px; height: 70px; object-fit: contain; }
+.carta-vista .membrete h1 { margin: 0; font-size: 22px; letter-spacing: 3px; color: var(--oro); }
+.carta-vista .membrete .lema { font-style: italic; color: var(--cafe); font-size: 12.5px; margin: 2px 0 1px; }
+.carta-vista .membrete .curso { color: var(--gris); font-size: 11px; }
+.carta-vista .regla { border-bottom: 2.5px solid var(--oro); margin: 12px 0 18px; }
+.carta-vista .fecha { text-align: right; margin-bottom: 16px; }
+.carta-vista p { margin: 0 0 10px; text-align: justify; }
+.carta-vista .dato { font-weight: 700; color: var(--cafe); }
+.carta-vista .firma-linea { border-bottom: 1.2px solid var(--oro); height: 26px; margin-bottom: 5px; }
+.carta-vista .firmas { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; margin-top: 8px; }
+.carta-vista .pie { border-top: 2px solid var(--oro); margin-top: 26px; padding-top: 8px; text-align: center; color: var(--gris); font-size: 10.5px; }
+.carta-vista .pie strong { color: var(--cafe); }
+@media (max-width: 900px) {
+  .carta-columnas { grid-template-columns: 1fr; }
+  .carta-vista { max-height: 50vh; padding: 20px; }
+}
+
 /* ===================== Avisos y modal ===================== */
 .aviso {
   position: fixed; right: 20px; bottom: 20px; background: var(--cafe); color: #fff;

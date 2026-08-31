@@ -357,6 +357,7 @@ function dibujarTabla() {
       <td>${uso}</td>
       <td>${carta}</td>
       <td><div class="acciones-fila">
+        <button class="btn-secundario mini" data-generar="${r.id}">Carta</button>
         <button class="btn-secundario mini" data-editar="${r.id}">Editar</button>
         <button class="btn-peligro mini" data-borrar="${r.id}">Borrar</button>
       </div></td>
@@ -563,8 +564,14 @@ document.getElementById("cuerpo-tabla").addEventListener("click", (e) => {
   const editar = e.target.dataset.editar;
   const borrar = e.target.dataset.borrar;
   const carta = e.target.dataset.carta;
+  const generar = e.target.dataset.generar;
 
   if (carta) { abrirCarta(carta); return; }
+  if (generar) {
+    const r = todos.find((x) => String(x.id) === generar);
+    if (r) abrirPanelCarta(r);
+    return;
+  }
 
   if (editar) {
     const r = todos.find((x) => String(x.id) === editar);
@@ -647,6 +654,254 @@ document.getElementById("btn-excel").onclick = () => {
   agregar("Dinero", orden.filter((r) => (r.asignacion || "") === USO_DINERO));
 
   XLSX.writeFile(libro, "Patrocinios_Hogar_de_Oro.xlsx");
+};
+
+// ===================== Generador de carta =====================
+const LOGO_CARTA = "logo.png?v=4";
+let registroCarta = null;
+
+function fechaLarga() {
+  const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
+                 "agosto", "setiembre", "octubre", "noviembre", "diciembre"];
+  const f = new Date();
+  return `${f.getDate()} de ${meses[f.getMonth()]} de ${f.getFullYear()}`;
+}
+
+function cuerpoCarta({ empresa, persona, aporte, responsable, fecha }) {
+  const marca = (t, vacio) => t ? escapar(t) : `<span class="dato">${vacio}</span>`;
+  return `
+    <div class="membrete">
+      <img src="${LOGO_CARTA}" alt="Hogar de Oro">
+      <div>
+        <h1>HOGAR DE ORO</h1>
+        <div class="lema">Porque su memoria no se quema, se honra.</div>
+        <div class="curso">Instituto Tecnológico de Costa Rica, curso PI-4802 Administración de Proyectos</div>
+      </div>
+    </div>
+    <div class="regla"></div>
+
+    <div class="fecha"><span class="dato">${escapar(fecha)}</span></div>
+
+    <p style="margin-bottom:2px"><span class="dato">${escapar(empresa)}</span></p>
+    ${persona ? `<p style="margin-bottom:2px">${escapar(persona)}</p>` : ""}
+    <p style="color:#7A6F5F">Presente</p>
+
+    <p style="margin-top:14px"><strong>Asunto:</strong> Solicitud de colaboración para el proyecto Hogar de Oro</p>
+
+    <p style="margin-top:14px">Estimados señores:</p>
+
+    <p>Reciba un cordial saludo. Somos alrededor de 70 estudiantes de Ingeniería en Producción Industrial
+    e Ingeniería Física del Instituto Tecnológico de Costa Rica (TEC) y, como parte del curso PI-4802
+    Administración de Proyectos, desarrollamos Hogar de Oro, una iniciativa en beneficio del Hogar de
+    Ancianos Santiago Crespo Calvo, ubicado en Alajuela. El Hogar brinda atención integral a
+    <strong>aproximadamente 200 personas adultas mayores</strong>, muchas de ellas en situación de riesgo
+    social y sin red familiar que las acompañe.</p>
+
+    <p>En julio de 2026, un incendio afectó <strong>20 habitaciones</strong> de la institución y dejó a esos
+    residentes sin su espacio propio. Desde allí, nuestro objetivo es contribuir con la recuperación de los
+    espacios afectados y con la adquisición de los materiales necesarios para su reconstrucción.</p>
+
+    <p>Para alcanzar esta meta, durante estos meses estaremos realizando ventas, bingos, rifas y otras
+    actividades de recaudación, además de gestionar alianzas con empresas, instituciones y emprendimientos
+    que deseen sumarse. Por esta razón, acudimos respetuosamente a
+    <span class="dato">${escapar(empresa)}</span> para solicitar ${marca(aporte, "[QUÉ SE SOLICITA]")}.
+    Dependiendo del tipo de aporte, este podrá utilizarse directamente en el proyecto o incorporarse a
+    nuestras actividades para transformarlo en recursos destinados a la causa.</p>
+
+    <p>Cada aporte suma y nos acerca a la meta del proyecto. Si la modalidad solicitada no estuviera dentro
+    de sus posibilidades, cualquier otra forma de colaboración es bien recibida. Agradecemos sinceramente su
+    tiempo y la posibilidad de considerar esta solicitud; quedamos a disposición para ampliar la información
+    y coordinar cualquier detalle necesario.</p>
+
+    <p style="margin-top:16px">Atentamente,</p>
+
+    <div style="width:48%; margin-top:26px">
+      <div class="firma-linea"></div>
+      <div><strong>${escapar(responsable) || "[NOMBRE DEL RESPONSABLE]"}</strong></div>
+      <div style="color:#6B4423">Equipo de Patrocinios y Donaciones</div>
+    </div>
+
+    <div class="firmas" style="margin-top:26px">
+      <div>
+        <div class="firma-linea"></div>
+        <div><strong>María José Rodríguez Chanto</strong></div>
+        <div style="color:#6B4423">Coordinación de Patrocinios</div>
+        <div style="color:#7A6F5F">mar.rodriguez.chanto@estudiantec.cr</div>
+      </div>
+      <div>
+        <div class="firma-linea"></div>
+        <div><strong>Felipe de Jesús Sánchez Montero</strong></div>
+        <div style="color:#6B4423">Gerencia del Proyecto</div>
+        <div style="color:#7A6F5F">felsanchez@estudiantec.cr</div>
+      </div>
+    </div>
+
+    <div class="pie">
+      <strong>Instituto Tecnológico de Costa Rica</strong>&nbsp;&nbsp;&nbsp;Instagram: @produ.impacta&nbsp;&nbsp;&nbsp;SINPE Móvil: 8426-5193 (Saúl)<br>
+      Supervisión académica: prof_lfonseca@estudiantec.cr, lfonseca@itcr.ac.cr, hcordero@itcr.ac.cr
+    </div>`;
+}
+
+function datosCarta() {
+  return {
+    empresa: document.getElementById("c-empresa").value,
+    persona: document.getElementById("c-persona").value.trim(),
+    aporte: document.getElementById("c-aporte").value.trim(),
+    responsable: document.getElementById("c-responsable").value,
+    fecha: document.getElementById("c-fecha").value,
+  };
+}
+
+function pintarCarta() {
+  document.getElementById("carta-vista").innerHTML = cuerpoCarta(datosCarta());
+}
+
+function llenarListaEmpresas() {
+  const nombres = [...new Set(todos.map((r) => r.empresa).filter(Boolean))].sort();
+  document.getElementById("lista-empresas").innerHTML =
+    nombres.map((n) => `<option value="${escapar(n)}">`).join("");
+}
+
+function marcarOrigen() {
+  const aviso = document.getElementById("c-origen");
+  const guardar = document.getElementById("c-guardar");
+  if (registroCarta) {
+    aviso.textContent = `Registro #${registroCarta.id} · responsable: ${registroCarta.responsable || "sin asignar"}`;
+    guardar.classList.remove("oculto");
+  } else {
+    aviso.textContent = "Esta empresa todavía no está en la lista. Puede pasarla al formulario para registrarla.";
+    guardar.classList.add("oculto");
+  }
+}
+
+function abrirPanelCarta(r) {
+  registroCarta = r || null;
+  llenarListaEmpresas();
+  document.getElementById("c-empresa").value = r ? (r.empresa || "") : "";
+  document.getElementById("c-persona").value = "";
+  document.getElementById("c-aporte").value = "";
+  document.getElementById("c-fecha").value = fechaLarga();
+  document.getElementById("c-responsable").innerHTML =
+    RESPONSABLES.map((n) => `<option value="${escapar(n)}"${r && n === r.responsable ? " selected" : ""}>${escapar(n)}</option>`).join("");
+  marcarOrigen();
+  pintarCarta();
+  const panel = document.getElementById("panel-carta");
+  panel.classList.remove("oculto");
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Si escriben una empresa que ya existe, se reconoce sola.
+document.getElementById("c-empresa").addEventListener("input", () => {
+  const nombre = document.getElementById("c-empresa").value.trim().toLowerCase();
+  const encontrado = todos.find((r) => (r.empresa || "").toLowerCase() === nombre);
+  registroCarta = encontrado || null;
+  if (encontrado && encontrado.responsable) {
+    document.getElementById("c-responsable").value = encontrado.responsable;
+  }
+  marcarOrigen();
+  pintarCarta();
+});
+
+document.getElementById("btn-carta-nueva").onclick = () => {
+  const panel = document.getElementById("panel-carta");
+  if (panel.classList.contains("oculto")) abrirPanelCarta(null);
+  else panel.classList.add("oculto");
+};
+
+// Llevar los datos de la carta al formulario de registro
+document.getElementById("c-formulario").onclick = () => {
+  const d = datosCarta();
+  if (!d.empresa) { avisar("Escriba primero la empresa.", true); return; }
+  limpiarFormulario();
+  form.elements["empresa"].value = d.empresa;
+  form.elements["contacto"].value = d.persona || "";
+  form.elements["responsable"].value = d.responsable || "";
+  form.elements["estado"].value = ESTADO_GESTION;
+  form.elements["descripcion"].value = d.aporte ? `Se solicitó ${d.aporte}.` : "";
+  actualizarAyudas();
+  abrirFormulario();
+  document.getElementById("panel-carta").classList.add("oculto");
+  avisar("Datos pasados al formulario. Revise y presione Guardar registro.");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+["c-persona", "c-aporte", "c-responsable"].forEach((id) => {
+  const el = document.getElementById(id);
+  el.addEventListener("input", pintarCarta);
+  el.addEventListener("change", pintarCarta);
+});
+
+document.getElementById("carta-cerrar").onclick = () =>
+  document.getElementById("panel-carta").classList.add("oculto");
+
+function documentoCarta() {
+  const estilos = `
+    body { font-family: Calibri, sans-serif; color: #2B2119; font-size: 11pt; line-height: 1.45; }
+    .membrete { display: flex; align-items: center; gap: 16px; }
+    .membrete img { width: 100px; }
+    .membrete h1 { margin: 0; font-size: 20pt; letter-spacing: 3px; color: #C08A1E; }
+    .lema { font-style: italic; color: #6B4423; font-size: 10pt; }
+    .curso { color: #6E6357; font-size: 8.5pt; }
+    .regla { border-bottom: 2.5px solid #C08A1E; margin: 10px 0 16px; }
+    .fecha { text-align: right; margin-bottom: 14px; }
+    p { text-align: justify; margin: 0 0 9px; }
+    .dato { font-weight: bold; color: #6B4423; }
+    .firma-linea { border-bottom: 1px solid #C08A1E; height: 24px; margin-bottom: 4px; width: 100%; }
+    .firmas { width: 100%; }
+    .pie { border-top: 2px solid #C08A1E; margin-top: 22px; padding-top: 6px; text-align: center; color: #6E6357; font-size: 8pt; }`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Carta</title><style>${estilos}</style></head>
+    <body>${cuerpoCarta(datosCarta()).replace('src="' + LOGO_CARTA + '"', 'src="' + location.origin + location.pathname.replace(/[^/]*$/, "") + LOGO_CARTA + '"')}</body></html>`;
+}
+
+function nombreArchivoCarta() {
+  const limpio = (datosCarta().empresa || "empresa").replace(/[^a-zA-Z0-9 áéíóúñÁÉÍÓÚÑ._-]/g, "").trim();
+  return `Carta - ${limpio}`;
+}
+
+document.getElementById("c-word").onclick = () => {
+  if (!document.getElementById("c-aporte").value.trim()) {
+    avisar("Escriba qué se le va a solicitar a la empresa.", true); return;
+  }
+  const blob = new Blob(["\ufeff", documentoCarta()], { type: "application/msword" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = nombreArchivoCarta() + ".doc";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  avisar("Carta descargada. Se abre en Word y se puede editar antes de enviarla.");
+};
+
+document.getElementById("c-pdf").onclick = () => {
+  const v = window.open("", "_blank");
+  v.document.write(documentoCarta());
+  v.document.close();
+  setTimeout(() => v.print(), 600);
+};
+
+document.getElementById("c-guardar").onclick = async () => {
+  if (!registroCarta) return;
+  if (!document.getElementById("c-aporte").value.trim()) {
+    avisar("Escriba qué se le va a solicitar a la empresa.", true); return;
+  }
+  const boton = document.getElementById("c-guardar");
+  boton.disabled = true;
+  boton.textContent = "Guardando...";
+  try {
+    const archivo = new File([documentoCarta()], nombreArchivoCarta() + ".doc", { type: "application/msword" });
+    const ruta = await subirCarta(archivo);
+    await pedir(`${API}?id=eq.${registroCarta.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ carta_url: ruta }),
+    });
+    avisar("La carta quedó guardada en el registro.");
+    document.getElementById("panel-carta").classList.add("oculto");
+    cargar();
+  } catch (e) {
+    avisar(e.message, true);
+  } finally {
+    boton.disabled = false;
+    boton.textContent = "Guardar en el registro";
+  }
 };
 
 // ===================== Sugerencias de otros compañeros =====================

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hogar de Oro · Patrocinios y Donaciones</title>
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
@@ -41,6 +41,7 @@
       <p>Hogar de Oro</p>
     </div>
     <div class="cabecera-acciones">
+      <button class="btn-secundario" id="btn-carta-nueva">Generar carta</button>
       <button class="btn-secundario" id="btn-sugerencias">Sugerencias <span class="globo" id="conteo-sugerencias">0</span></button>
       <button class="btn-excel" id="btn-excel">Descargar Excel</button>
       <button class="btn-secundario" id="btn-cartas">Descargar cartas</button>
@@ -151,6 +152,53 @@
     <div id="lista-sugerencias"></div>
   </section>
 
+  <!-- ===== Generador de cartas ===== -->
+  <section class="caja oculto" id="panel-carta">
+    <div class="cabecera-caja">
+      <h2>Generar carta de solicitud</h2>
+      <button type="button" class="btn-texto" id="carta-cerrar">Cerrar</button>
+    </div>
+    <p class="desc-pantalla">Sirve para cualquier empresa, esté o no en la lista. La carta se arma sola mientras escribe.</p>
+
+    <div class="carta-columnas">
+      <div class="carta-datos">
+        <div class="campo">
+          <label>Empresa o persona <span class="req">*</span></label>
+          <input type="text" id="c-empresa" list="lista-empresas" placeholder="Nombre de la empresa o negocio">
+          <datalist id="lista-empresas"></datalist>
+          <small class="ayuda" id="c-origen">Si ya está en la lista, escoja el nombre y se completa lo demás.</small>
+        </div>
+        <div class="campo">
+          <label>Persona de contacto <span class="opcional">(opcional)</span></label>
+          <input type="text" id="c-persona" placeholder="Ej. Sra. Marta Jiménez, Gerente">
+          <small class="ayuda">Si no la conoce, déjelo vacío: la carta sale dirigida a la empresa, sin líneas en blanco.</small>
+        </div>
+        <div class="campo">
+          <label>Qué se solicita <span class="req">*</span></label>
+          <textarea id="c-aporte" rows="3" placeholder="Ej. una donación de repostería para una venta estudiantil"></textarea>
+          <small class="ayuda">Va en la frase “acudimos a … para solicitar …”. En minúscula y sin punto final.</small>
+        </div>
+        <div class="campo">
+          <label>Responsable que firma</label>
+          <select id="c-responsable"></select>
+        </div>
+        <div class="campo">
+          <label>Fecha</label>
+          <input type="text" id="c-fecha" readonly>
+        </div>
+
+        <div class="carta-botones">
+          <button type="button" class="btn-principal" id="c-word">Descargar en Word</button>
+          <button type="button" class="btn-secundario" id="c-pdf">Imprimir o guardar en PDF</button>
+          <button type="button" class="btn-excel" id="c-guardar">Guardar en el registro</button>
+          <button type="button" class="btn-secundario" id="c-formulario">Pasar al formulario de registro</button>
+        </div>
+      </div>
+
+      <div class="carta-vista" id="carta-vista"></div>
+    </div>
+  </section>
+
   <!-- ===== Pantallas ===== -->
   <nav class="pestanas" id="pestanas"></nav>
 
@@ -198,7 +246,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="config.js?v=4"></script>
-<script src="app.js?v=4"></script>
+<script src="config.js?v=5"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
