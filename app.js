@@ -834,23 +834,95 @@ document.getElementById("c-formulario").onclick = () => {
 document.getElementById("carta-cerrar").onclick = () =>
   document.getElementById("panel-carta").classList.add("oculto");
 
+// ---- Texto de la carta en piezas, para armar Word y PDF ----
+function piezasCarta() {
+  const d = datosCarta();
+  return {
+    ...d,
+    parrafos: [
+      [{ t: "Reciba un cordial saludo. Somos alrededor de 70 estudiantes de Ingeniería en Producción Industrial e Ingeniería Física del Instituto Tecnológico de Costa Rica (TEC) y, como parte del curso PI-4802 Administración de Proyectos, desarrollamos Hogar de Oro, una iniciativa en beneficio del Hogar de Ancianos Santiago Crespo Calvo, ubicado en Alajuela. El Hogar brinda atención integral a " },
+       { t: "aproximadamente 200 personas adultas mayores", b: true },
+       { t: ", muchas de ellas en situación de riesgo social y sin red familiar que las acompañe." }],
+      [{ t: "En julio de 2026, un incendio afectó " },
+       { t: "20 habitaciones", b: true },
+       { t: " de la institución y dejó a esos residentes sin su espacio propio. Desde allí, nuestro objetivo es contribuir con la recuperación de los espacios afectados y con la adquisición de los materiales necesarios para su reconstrucción." }],
+      [{ t: "Para alcanzar esta meta, durante estos meses estaremos realizando ventas, bingos, rifas y otras actividades de recaudación, además de gestionar alianzas con empresas, instituciones y emprendimientos que deseen sumarse. Por esta razón, acudimos respetuosamente a " },
+       { t: d.empresa, b: true },
+       { t: " para solicitar " + d.aporte + ". Dependiendo del tipo de aporte, este podrá utilizarse directamente en el proyecto o incorporarse a nuestras actividades para transformarlo en recursos destinados a la causa." }],
+      [{ t: "Cada aporte suma y nos acerca a la meta del proyecto. Si la modalidad solicitada no estuviera dentro de sus posibilidades, cualquier otra forma de colaboración es bien recibida. Agradecemos sinceramente su tiempo y la posibilidad de considerar esta solicitud; quedamos a disposición para ampliar la información y coordinar cualquier detalle necesario." }],
+    ],
+  };
+}
+
+// ---- Documento para Word: tablas en vez de flex, que es lo que Word entiende ----
 function documentoCarta() {
-  const estilos = `
-    body { font-family: Calibri, sans-serif; color: #2B2119; font-size: 11pt; line-height: 1.45; }
-    .membrete { display: flex; align-items: center; gap: 16px; }
-    .membrete img { width: 100px; }
-    .membrete h1 { margin: 0; font-size: 20pt; letter-spacing: 3px; color: #C08A1E; }
-    .lema { font-style: italic; color: #6B4423; font-size: 10pt; }
-    .curso { color: #6E6357; font-size: 8.5pt; }
-    .regla { border-bottom: 2.5px solid #C08A1E; margin: 10px 0 16px; }
-    .fecha { text-align: right; margin-bottom: 14px; }
-    p { text-align: justify; margin: 0 0 9px; }
-    .dato { font-weight: bold; color: #6B4423; }
-    .firma-linea { border-bottom: 1px solid #C08A1E; height: 24px; margin-bottom: 4px; width: 100%; }
-    .firmas { width: 100%; }
-    .pie { border-top: 2px solid #C08A1E; margin-top: 22px; padding-top: 6px; text-align: center; color: #6E6357; font-size: 8pt; }`;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Carta</title><style>${estilos}</style></head>
-    <body>${cuerpoCarta(datosCarta()).replace('src="' + LOGO_CARTA + '"', 'src="' + location.origin + location.pathname.replace(/[^/]*$/, "") + LOGO_CARTA + '"')}</body></html>`;
+  const d = piezasCarta();
+  const base = location.origin + location.pathname.replace(/[^/]*$/, "");
+  const parrafo = (partes) => `<p>${partes.map((x) =>
+    x.b ? `<b>${escapar(x.t)}</b>` : escapar(x.t)).join("")}</p>`;
+
+  const firma = (nombre, puesto, correo) => `
+    <p style="border-top:1pt solid #C08A1E; margin:0 0 3pt 0; padding-top:3pt">
+      <b>${escapar(nombre)}</b></p>
+    <p style="margin:0; color:#6B4423; font-size:10pt">${escapar(puesto)}</p>
+    ${correo ? `<p style="margin:0; color:#6E6357; font-size:9.5pt">${escapar(correo)}</p>` : ""}`;
+
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>Carta ${escapar(d.empresa)}</title>
+<style>
+@page WordSection1 { size: 21.59cm 27.94cm; margin: 1.8cm 2.2cm 1.4cm 2.2cm; }
+div.WordSection1 { page: WordSection1; }
+body { font-family: Calibri, sans-serif; font-size: 11pt; color: #2B2119; }
+p { margin: 0 0 7pt 0; text-align: justify; line-height: 1.15; }
+td { vertical-align: middle; }
+</style></head>
+<body><div class="WordSection1">
+
+<table width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+  <td width="125"><img src="${base}${LOGO_CARTA}" width="112" height="84"></td>
+  <td>
+    <p style="margin:0; text-align:left"><span style="font-size:20pt; color:#C08A1E; letter-spacing:2pt"><b>HOGAR DE ORO</b></span></p>
+    <p style="margin:2pt 0 0 0; text-align:left; font-size:10pt; color:#6B4423"><i>Porque su memoria no se quema, se honra.</i></p>
+    <p style="margin:1pt 0 0 0; text-align:left; font-size:8.5pt; color:#6E6357">Instituto Tecnológico de Costa Rica, curso PI-4802 Administración de Proyectos</p>
+  </td>
+</tr></table>
+
+<p style="border-bottom:1.5pt solid #C08A1E; margin:6pt 0 14pt 0; font-size:1pt">&nbsp;</p>
+
+<p style="text-align:right; margin-bottom:14pt"><b>${escapar(d.fecha)}</b></p>
+
+<p style="margin:0; text-align:left"><b>${escapar(d.empresa)}</b></p>
+${d.persona ? `<p style="margin:0; text-align:left">${escapar(d.persona)}</p>` : ""}
+<p style="margin:0 0 12pt 0; text-align:left; color:#6E6357">Presente</p>
+
+<p style="text-align:left; margin-bottom:12pt"><b>Asunto:</b> Solicitud de colaboración para el proyecto Hogar de Oro</p>
+
+<p style="text-align:left; margin-bottom:10pt">Estimados señores:</p>
+
+${d.parrafos.map(parrafo).join("\n")}
+
+<p style="text-align:left; margin:10pt 0 22pt 0">Atentamente,</p>
+
+<table width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+  <td width="48%" valign="top">${firma(d.responsable || "[NOMBRE DEL RESPONSABLE]", "Equipo de Patrocinios y Donaciones", "")}</td>
+  <td width="4%">&nbsp;</td>
+  <td width="48%">&nbsp;</td>
+</tr></table>
+
+<table width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:18pt"><tr>
+  <td width="48%" valign="top">${firma("María José Rodríguez Chanto", "Coordinación de Patrocinios", "mar.rodriguez.chanto@estudiantec.cr")}</td>
+  <td width="4%">&nbsp;</td>
+  <td width="48%" valign="top">${firma("Felipe de Jesús Sánchez Montero", "Gerencia del Proyecto", "felsanchez@estudiantec.cr")}</td>
+</tr></table>
+
+<p style="border-top:1.5pt solid #C08A1E; margin:16pt 0 4pt 0; font-size:1pt">&nbsp;</p>
+<p style="text-align:center; margin:0; font-size:8.5pt; color:#6E6357">
+  <b style="color:#6B4423">Instituto Tecnológico de Costa Rica</b>&nbsp;&nbsp;&nbsp;Instagram: @produ.impacta&nbsp;&nbsp;&nbsp;SINPE Móvil: 8426-5193 (Saúl)</p>
+<p style="text-align:center; margin:0; font-size:8pt; color:#6E6357">
+  Supervisión académica: prof_lfonseca@estudiantec.cr, lfonseca@itcr.ac.cr, hcordero@itcr.ac.cr</p>
+
+</div></body></html>`;
 }
 
 function nombreArchivoCarta() {
@@ -858,11 +930,105 @@ function nombreArchivoCarta() {
   return `Carta - ${limpio}`;
 }
 
+// ---- PDF de verdad: se arma el documento, sin encabezados del navegador ----
+let logoBase64 = null;
+async function cargarLogo() {
+  if (logoBase64) return logoBase64;
+  const res = await fetch(LOGO_CARTA);
+  const blob = await res.blob();
+  logoBase64 = await new Promise((ok) => {
+    const l = new FileReader();
+    l.onload = () => ok(l.result);
+    l.readAsDataURL(blob);
+  });
+  return logoBase64;
+}
+
+function cargarGuion(url) {
+  return new Promise((ok, mal) => {
+    const s = document.createElement("script");
+    s.src = url; s.onload = ok; s.onerror = () => mal(new Error("No se pudo cargar el generador de PDF."));
+    document.head.appendChild(s);
+  });
+}
+
+async function prepararPdf() {
+  if (window.pdfMake && window.pdfMake.vfs) return;
+  await cargarGuion("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js");
+  await cargarGuion("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js");
+}
+
+function definicionPdf(logo) {
+  const d = piezasCarta();
+  const texto = (partes) => ({
+    text: partes.map((x) => ({ text: x.t, bold: !!x.b })),
+    alignment: "justify", margin: [0, 0, 0, 8], lineHeight: 1.15,
+  });
+  const firma = (nombre, puesto, correo) => ({
+    stack: [
+      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 210, y2: 0, lineWidth: 1, lineColor: "#C08A1E" }], margin: [0, 0, 0, 5] },
+      { text: nombre, bold: true, fontSize: 10 },
+      { text: puesto, color: "#6B4423", fontSize: 9.5 },
+      correo ? { text: correo, color: "#6E6357", fontSize: 9 } : {},
+    ],
+  });
+
+  return {
+    pageSize: "LETTER",
+    pageMargins: [62, 54, 62, 44],
+    defaultStyle: { fontSize: 10.5, color: "#2B2119" },
+    content: [
+      {
+        columns: [
+          { image: logo, width: 84, margin: [0, 2, 0, 0] },
+          {
+            width: "*",
+            margin: [14, 6, 0, 0],
+            stack: [
+              { text: "HOGAR DE ORO", bold: true, fontSize: 19, color: "#C08A1E", characterSpacing: 2 },
+              { text: "Porque su memoria no se quema, se honra.", italics: true, fontSize: 10, color: "#6B4423", margin: [0, 2, 0, 1] },
+              { text: "Instituto Tecnológico de Costa Rica, curso PI-4802 Administración de Proyectos", fontSize: 8, color: "#6E6357" },
+            ],
+          },
+        ],
+      },
+      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 488, y2: 0, lineWidth: 1.6, lineColor: "#C08A1E" }], margin: [0, 10, 0, 14] },
+      { text: d.fecha, bold: true, alignment: "right", margin: [0, 0, 0, 14] },
+      { text: d.empresa, bold: true },
+      ...(d.persona ? [{ text: d.persona }] : []),
+      { text: "Presente", color: "#6E6357", margin: [0, 0, 0, 12] },
+      { text: [{ text: "Asunto: ", bold: true }, "Solicitud de colaboración para el proyecto Hogar de Oro"], margin: [0, 0, 0, 12] },
+      { text: "Estimados señores:", margin: [0, 0, 0, 10] },
+      ...d.parrafos.map(texto),
+      { text: "Atentamente,", margin: [0, 8, 0, 34] },
+      { columns: [firma(d.responsable || "[NOMBRE DEL RESPONSABLE]", "Equipo de Patrocinios y Donaciones", ""), { text: "" }], columnGap: 24 },
+      {
+        columns: [
+          firma("María José Rodríguez Chanto", "Coordinación de Patrocinios", "mar.rodriguez.chanto@estudiantec.cr"),
+          firma("Felipe de Jesús Sánchez Montero", "Gerencia del Proyecto", "felsanchez@estudiantec.cr"),
+        ],
+        columnGap: 24, margin: [0, 26, 0, 0],
+      },
+    ],
+    footer: () => ({
+      stack: [
+        { canvas: [{ type: "line", x1: 62, y1: 0, x2: 550, y2: 0, lineWidth: 1.4, lineColor: "#C08A1E" }] },
+        { text: [{ text: "Instituto Tecnológico de Costa Rica", bold: true, color: "#6B4423" },
+                 { text: "     Instagram: @produ.impacta     SINPE Móvil: 8426-5193 (Saúl)" }],
+          alignment: "center", fontSize: 8, color: "#6E6357", margin: [0, 5, 0, 1] },
+        { text: "Supervisión académica: prof_lfonseca@estudiantec.cr, lfonseca@itcr.ac.cr, hcordero@itcr.ac.cr",
+          alignment: "center", fontSize: 7.5, color: "#6E6357" },
+      ],
+      margin: [0, 6, 0, 0],
+    }),
+  };
+}
+
 document.getElementById("c-word").onclick = () => {
   if (!document.getElementById("c-aporte").value.trim()) {
     avisar("Escriba qué se le va a solicitar a la empresa.", true); return;
   }
-  const blob = new Blob(["\ufeff", documentoCarta()], { type: "application/msword" });
+  const blob = new Blob(["﻿", documentoCarta()], { type: "application/msword" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = nombreArchivoCarta() + ".doc";
@@ -871,11 +1037,24 @@ document.getElementById("c-word").onclick = () => {
   avisar("Carta descargada. Se abre en Word y se puede editar antes de enviarla.");
 };
 
-document.getElementById("c-pdf").onclick = () => {
-  const v = window.open("", "_blank");
-  v.document.write(documentoCarta());
-  v.document.close();
-  setTimeout(() => v.print(), 600);
+document.getElementById("c-pdf").onclick = async () => {
+  if (!document.getElementById("c-aporte").value.trim()) {
+    avisar("Escriba qué se le va a solicitar a la empresa.", true); return;
+  }
+  const boton = document.getElementById("c-pdf");
+  boton.disabled = true;
+  boton.textContent = "Armando el PDF...";
+  try {
+    const logo = await cargarLogo();
+    await prepararPdf();
+    window.pdfMake.createPdf(definicionPdf(logo)).download(nombreArchivoCarta() + ".pdf");
+    avisar("PDF descargado.");
+  } catch (e) {
+    avisar(e.message, true);
+  } finally {
+    boton.disabled = false;
+    boton.textContent = "Descargar en PDF";
+  }
 };
 
 document.getElementById("c-guardar").onclick = async () => {
