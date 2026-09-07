@@ -241,13 +241,6 @@ function mostrarLogin(mensaje = "") {
 }
 
 function esPendiente(r) { return (r.asignacion || "") === USO_PENDIENTE; }
-// Donación conseguida cuya actividad no está definida o no es una de la lista.
-function sinActividad(r) {
-  if (r.estado !== ESTADO_RECIBIDO) return false;
-  if ((r.asignacion || "") === USO_DINERO) return false;
-  return !DESTINOS.includes(r.destino || "");
-}
-
 function esUsadoODinero(r) {
   const a = r.asignacion || "";
   return a === USO_USADO || a === USO_DINERO;
@@ -295,19 +288,17 @@ function actualizarAyudas() {
   const pendiente = conseguida && uso === USO_PENDIENTE;
   const usado = conseguida && uso === USO_USADO;
 
-  // En los dos casos se escoge la actividad de la lista; al usarlo, además se puede
-  // escribir el detalle (cuál bingo, cuál rifa).
   document.getElementById("campo-destino").classList.toggle("oculto", !(pendiente || usado));
-  document.getElementById("select-destino").classList.remove("oculto");
+  document.getElementById("select-destino").classList.toggle("oculto", !pendiente);
   document.getElementById("texto-destino").classList.toggle("oculto", !usado);
-  document.getElementById("select-destino").required = pendiente || usado;
+  document.getElementById("select-destino").required = pendiente;
 
   document.getElementById("rotulo-destino").innerHTML = usado
-    ? "¿En qué actividad se usó? <span class=\"req\">*</span>"
+    ? "¿En qué actividad se usó?"
     : "¿Para qué se va a usar? <span class=\"req\">*</span>";
   document.getElementById("ayuda-destino").textContent = usado
-    ? "Escoja la actividad y, si quiere, escriba el detalle: cuál bingo, cuál rifa."
-    : "Obligatorio: es lo que permite saber con qué se cuenta para cada actividad.";
+    ? "Escriba la actividad donde se entregó o se ocupó el aporte."
+    : "Obligatorio cuando el aporte está pendiente de usar.";
 }
 
 // ===================== Cargar y dibujar =====================
@@ -326,8 +317,7 @@ function aplicarFiltros() {
 
   visibles = todos.filter((r) => {
     if (estadoActual && r.estado !== estadoActual) return false;
-    if (usoActual === "sin-actividad") { if (!sinActividad(r)) return false; }
-    else if (usoActual && (r.asignacion || "") !== usoActual) return false;
+    if (usoActual && (r.asignacion || "") !== usoActual) return false;
     if (destinoActual && (r.destino || "") !== destinoActual) return false;
     if (resp && r.responsable !== resp) return false;
     if (texto) {
@@ -344,38 +334,7 @@ function aplicarFiltros() {
   dibujarResumen();
   dibujarConteos();
   dibujarChips();
-  dibujarSinActividad();
 }
-
-function dibujarSinActividad() {
-  const faltan = todos.filter(sinActividad);
-  const monto = faltan.reduce((s, r) => s + (Number(r.valor_aproximado) || 0), 0);
-
-  const globo = document.getElementById("conteo-sin-actividad");
-  globo.textContent = faltan.length;
-  globo.classList.toggle("vacio-cero", faltan.length === 0);
-
-  const aviso = document.getElementById("aviso-actividad");
-  if (usoActual === "sin-actividad" && faltan.length) {
-    aviso.innerHTML = `Estas <strong>${faltan.length} donaciones</strong> (${colones(monto)}) están conseguidas
-      pero nadie ha dicho para qué actividad son. Presione <strong>Editar</strong> en cada una y escoja la actividad.`;
-    aviso.classList.remove("oculto");
-  } else {
-    aviso.classList.add("oculto");
-  }
-}
-
-document.getElementById("btn-sin-actividad").onclick = () => {
-  document.querySelectorAll(".pestana").forEach((b) => b.classList.remove("activa"));
-  document.querySelector('.pestana[data-estado=""]').classList.add("activa");
-  estadoActual = "";
-  destinoActual = "";
-  usoActual = "sin-actividad";
-  document.getElementById("desc-pantalla").textContent = "Todos los registros ingresados.";
-  dibujarBarraUso();
-  aplicarFiltros();
-  document.querySelector(".caja-tabla").scrollIntoView({ behavior: "smooth", block: "start" });
-};
 
 function dibujarTabla() {
   const cuerpo = document.getElementById("cuerpo-tabla");
@@ -426,8 +385,7 @@ function dibujarResumen() {
 function dibujarConteos() {
   const cuenta = (e) => todos.filter((r) => {
     if (e && r.estado !== e) return false;
-    if (usoActual === "sin-actividad") { if (!sinActividad(r)) return false; }
-    else if (usoActual && (r.asignacion || "") !== usoActual) return false;
+    if (usoActual && (r.asignacion || "") !== usoActual) return false;
     return true;
   }).length;
 
@@ -495,17 +453,15 @@ function dibujarBarraUso() {
     document.getElementById("chips-destino").innerHTML = "";
     return;
   }
-  const faltan = todos.filter(sinActividad).length;
   const opciones = [
     { v: "", t: "Todo" },
     { v: USO_PENDIENTE, t: "Por usar" },
     { v: USO_USADO, t: "Ya usado" },
     { v: USO_DINERO, t: "Dinero" },
-    { v: "sin-actividad", t: `Sin actividad (${faltan})`, alerta: true },
   ];
   const caja = document.getElementById("barra-uso");
   caja.innerHTML = opciones.map((o) =>
-    `<button class="btn-uso ${o.alerta ? "alerta " : ""}${usoActual === o.v ? "activa" : ""}" data-uso="${o.v}">${o.t}</button>`).join("");
+    `<button class="btn-uso ${usoActual === o.v ? "activa" : ""}" data-uso="${o.v}">${o.t}</button>`).join("");
   caja.querySelectorAll(".btn-uso").forEach((b) => {
     b.onclick = () => {
       usoActual = b.dataset.uso;
@@ -538,11 +494,7 @@ form.onsubmit = async (e) => {
     avisar("Indique para qué actividad se va a usar el aporte.", true); return;
   }
   if (datos.asignacion === USO_USADO) {
-    const detalle = document.getElementById("texto-destino").value.trim();
-    if (!datos.destino) { avisar("Escoja en qué actividad se usó el aporte.", true); return; }
-    if (detalle && !(datos.descripcion || "").includes(detalle)) {
-      datos.descripcion = [datos.descripcion, `Usado en: ${detalle}`].filter(Boolean).join(" · ");
-    }
+    datos.destino = document.getElementById("texto-destino").value.trim();
   } else if (datos.asignacion !== USO_PENDIENTE) {
     datos.destino = "";
   }
@@ -628,8 +580,12 @@ document.getElementById("cuerpo-tabla").addEventListener("click", (e) => {
       if (form.elements[c]) form.elements[c].value = r[c] ?? "";
     });
     form.elements["id"].value = r.id;
-    document.getElementById("texto-destino").value = "";
-    if (!DESTINOS.includes(r.destino || "")) document.getElementById("select-destino").value = "";
+    if ((r.asignacion || "") === USO_USADO) {
+      document.getElementById("texto-destino").value = r.destino || "";
+      document.getElementById("select-destino").value = "";
+    } else {
+      document.getElementById("texto-destino").value = "";
+    }
     document.getElementById("titulo-form").textContent = `Editando: ${r.empresa}`;
     document.getElementById("btn-cancelar").classList.remove("oculto");
     document.getElementById("ayuda-carta").textContent = r.carta_url
