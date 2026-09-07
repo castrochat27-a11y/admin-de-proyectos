@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hogar de Oro · Patrocinios y Donaciones</title>
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 
@@ -41,6 +41,7 @@
       <p>Hogar de Oro</p>
     </div>
     <div class="cabecera-acciones">
+      <button class="btn-secundario" id="btn-sin-actividad">Sin actividad <span class="globo" id="conteo-sin-actividad">0</span></button>
       <button class="btn-secundario" id="btn-carta-nueva">Generar carta</button>
       <button class="btn-secundario" id="btn-sugerencias">Sugerencias <span class="globo" id="conteo-sugerencias">0</span></button>
       <button class="btn-excel" id="btn-excel">Descargar Excel</button>
@@ -115,7 +116,7 @@
         <label id="rotulo-destino">¿Para qué se va a usar? <span class="req">*</span></label>
         <select name="destino" id="select-destino"></select>
         <input type="text" name="destino_texto" id="texto-destino" class="oculto"
-               placeholder="Ej. Bingo del 3 de setiembre, rifa del día de pilates">
+               placeholder="Ej. Bingo del 3 de setiembre (opcional)">
         <small class="ayuda" id="ayuda-destino">Obligatorio cuando el aporte está pendiente de usar.</small>
       </div>
 
@@ -205,6 +206,8 @@
   <section class="caja caja-tabla">
     <p class="desc-pantalla" id="desc-pantalla">Todos los registros ingresados.</p>
 
+    <div class="aviso-actividad oculto" id="aviso-actividad"></div>
+
     <div class="barra-uso" id="barra-uso"></div>
     <div class="chips" id="chips-destino"></div>
 
@@ -246,7 +249,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="config.js?v=6"></script>
-<script src="app.js?v=6"></script>
+<script src="config.js?v=7"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
